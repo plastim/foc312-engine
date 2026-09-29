@@ -84,6 +84,8 @@ class Hub:
         r.add_get("/api/jobs", self.h_jobs)
         r.add_get("/api/jobs/{id}", self.h_job)
         r.add_get("/api/hotkeys", self.h_hotkeys)
+        r.add_get("/api/settings/cap", self.h_cap)
+        r.add_put("/api/settings/cap", self.h_cap_put)
         r.add_get("/api/engine/status", self.h_engine_status)
         r.add_get("/api/remote/settings", self.h_remote_settings)
         r.add_put("/api/remote/settings", self.h_remote_settings_put)
@@ -320,6 +322,21 @@ class Hub:
         if job is None:
             return _err("no such job", 404)
         return web.json_response(job.view())
+
+    async def h_cap(self, _req: web.Request) -> web.Response:
+        from . import capsetting
+        return web.json_response({"amps": capsetting.read(), "min": capsetting.MIN_AMPS,
+                                  "max": capsetting.HARD_AMPS_CAP, "engine_running": self.engine.running()})
+
+    async def h_cap_put(self, req: web.Request) -> web.Response:
+        from . import capsetting
+        try:
+            amps = capsetting.write((await _body(req)).get("amps"))
+        except (TypeError, ValueError, OSError) as exc:
+            return _err(str(exc))
+        note = ("Saved. It applies the next time the engine connects (disconnect and connect now to use it)."
+                if self.engine.running() else "Saved. It applies the next time the engine connects.")
+        return web.json_response({"ok": True, "amps": amps, "note": note + " The M5 remote gets it with its next Load."})
 
     async def h_hotkeys(self, _req: web.Request) -> web.Response:
         if self.hotkeys is None:

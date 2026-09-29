@@ -56,7 +56,12 @@
       <input id="levelB" type="range" min="0" max="1000" value="0">
       <output id="levelBOut">0%</output>
     </label>
-    <div class="knob"><span>Both: device knob (master)</span> <strong id="knob">—</strong></div>
+    <label class="slider master" title="Master for both channels: ARM ramps up to it; lowering is instant">
+      <span class="lbl">Master <small class="muted">both channels</small></span>
+      <input id="master" type="range" min="0" max="1000" value="1000">
+      <output id="masterOut">100%</output>
+    </label>
+    <div class="knob"><span>Box knob <small class="muted">(the box's own volume, on top of all this)</small></span> <strong id="knob">—</strong></div>
     <div class="shape-row" id="shapeRow">
       <span class="lbl">Pulse shape <small id="shapeNote" class="note"></small></span>
       <div class="shapes" role="radiogroup" aria-label="Pulse shape (both channels)">

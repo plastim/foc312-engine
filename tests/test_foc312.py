@@ -740,3 +740,32 @@ async def test_v7_shapes_never_reach_an_older_fork(tmp_path):
             assert run.set_shape("soft") == "soft"
             await eng.stop()
             box.stop()
+
+
+# ---------------------------------------------------------------- the player's Master
+
+@pytest.mark.needs_et312_data
+@run_async
+async def test_master_arm_ramps_to_it_lowering_is_instant_raising_slow_starts(tmp_path):
+    box, eng = await box_engine(tmp_path, fork=True, slow_start_s=1.0, deadman_silence_s=5.0)
+    run = Foc312Runner(eng, make_config())
+    await run.set_output("fork")
+    run.set_pattern("builtin:waves")
+    run.set_levels(1.0, 1.0)
+    run.set_master(0.5)
+    assert eng._master_now == 0.0, "setting Master before ARM releases nothing"
+    run.arm()
+    await pump(run, 1.5, hb=True)
+    assert eng._master_now == pytest.approx(0.5), "ARM ramps up to the player's Master, not to 100 %"
+    run.set_master(0.2)
+    await pump(run, 0.05, hb=True)
+    assert eng._master_now == pytest.approx(0.2), "lowering Master is instant"
+    run.set_master(1.0)
+    await pump(run, 0.25, hb=True)
+    assert 0.2 < eng._master_now < 0.6, "raising Master rises at the slow-start rate, not at once"
+    assert run.state()["master_set"] == 1.0
+    run.stop_output()
+    await asyncio.sleep(0.05)
+    assert eng._master_now == 0.0, "STOP still zeroes it"
+    await eng.stop()
+    box.stop()

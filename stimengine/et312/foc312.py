@@ -164,6 +164,7 @@ class Foc312Runner:
         self.monophasic_asymmetry = float(min(4.0, max(1.0, float(et.get("monophasic_asymmetry", 3.0)))))
         self.skip_mode_ramp = bool(et.get("skip_mode_ramp", False))   # see ET312Engine.skip_mode_ramp
         self.mapping_cfg = MappingConfig.from_config(cfg) if cfg else MappingConfig()
+        self.master = 1.0                   # the player's Master: ARM ramps up to it (was always 1.0)
         self.levels = [0.0, 0.0]            # knobs start at zero, like the box; always independent (PlaStim: both
                                             # together = the V4's hardware knob, the master volume)
         self.ma = 0.5
@@ -450,8 +451,8 @@ class Foc312Runner:
         if not self._engine_live():
             raise Foc312Error("no device link")
         eng = self.engine
-        eng.set_master(1.0, source="foc312")
-        eng.arm()                                      # master ramps 0 -> 1 over safety.slow_start_s
+        eng.set_master(self.master, source="foc312")
+        eng.arm()                                      # master ramps 0 -> the player's Master over safety.slow_start_s
 
     def stop_output(self) -> None:
         """STOP: immediate zero (disarm). The signal stays on; the pattern keeps animating."""
@@ -509,6 +510,13 @@ class Foc312Runner:
         if b is not None:
             self.levels[1] = min(1.0, max(0.0, float(b)))
         self.et.set_levels(self.levels[0], self.levels[1])
+
+    def set_master(self, v: float) -> None:
+        """The player's Master. Lower: at once. Higher while armed: the engine ramps up at the slow-start rate (the
+        same rise as ARM); nothing here can raise the output faster than that."""
+        self.master = min(1.0, max(0.0, float(v)))
+        if self.engine is not None and self.engine.running and self.engine.armed:
+            self.engine.set_master(self.master, source="foc312")
 
     def set_ma(self, v: float) -> None:
         self.ma = min(1.0, max(0.0, float(v)))
@@ -616,7 +624,7 @@ class Foc312Runner:
         out = {
             "t": round(f.t, 3), "output": self.output, "outputs_available": self.outputs_available(),
             "caps": self.capabilities(), "pattern": dict(self.pattern), "mode_name": f.mode_name,
-            "phase_mode": f.phase_mode, "levels": list(self.levels), "ma": self.ma,
+            "phase_mode": f.phase_mode, "levels": list(self.levels), "master_set": self.master, "ma": self.ma,
             "power": self.power, "advanced": asdict(self.advanced), "routes": list(self.routes),
             "skip_mode_ramp": self.skip_mode_ramp,
             "shape": F.SHAPES[self.shape], "pads": list(self.pads),

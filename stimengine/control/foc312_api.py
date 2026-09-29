@@ -123,6 +123,8 @@ class Foc312API:
             run.set_pattern(str(d.get("id", "")))
         elif cmd == "levels":
             run.set_levels(_num01(d, "a"), _num01(d, "b"))
+        elif cmd == "master":
+            run.set_master(_num01(d, "value"))
         elif cmd == "ma":
             v = _num01(d, "value")
             if v is None:

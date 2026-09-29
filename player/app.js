@@ -114,6 +114,7 @@ function onState(s, full) {
   syncSlider("ma", s.ma, "maOut");
   syncSlider("levelA", s.levels[0], "levelAOut");
   syncSlider("levelB", s.levels[1], "levelBOut");
+  if (s.master_set !== undefined) syncSlider("master", s.master_set, "masterOut");
   $("knob").textContent = s.knob.value != null ? pct(s.knob.value) + (s.knob.locked ? " (locked)" : "") : s.knob.note.replace(/^knob: /, "");
 
   // routing
@@ -179,6 +180,7 @@ function bindSlider(id, outId, onSend) {
 bindSlider("ma", "maOut", (v) => send("ma", { value: v }));
 bindSlider("levelA", "levelAOut", (v) => send("levels", { a: v }));
 bindSlider("levelB", "levelBOut", (v) => send("levels", { b: v }));
+bindSlider("master", "masterOut", (v) => send("master", { value: v }));
 
 $("pattern").addEventListener("change", (e) => send("pattern", { id: e.target.value }));
 $("power").addEventListener("change", (e) => send("power", { level: e.target.value }));

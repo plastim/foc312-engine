@@ -340,6 +340,23 @@
 
   <!-- ------------------------------------------------------------------ Settings -->
   <section class="panel" id="panel-settings" role="tabpanel" aria-labelledby="tab-settings" hidden>
+    <div class="card" id="capCard">
+      <h2>Current cap <small id="capState" class="muted"></small></h2>
+      <p class="muted">The most any level can reach, at the body. What you feel is this x Level x Master x the box's own
+        knob. The box itself never goes above 200 mA.</p>
+      <div class="form">
+        <label>Cap <input id="capRange" type="range" min="20" max="200" step="5" value="150">
+          <b id="capValue">150 mA</b></label>
+      </div>
+      <div class="actions">
+        <button id="capSave" class="primary" disabled>Save</button>
+        <button id="capConfirm" class="danger" hidden>Yes, raise it</button>
+        <span id="capMsg" class="muted"></span>
+      </div>
+      <p class="fine">Takes effect the next time the engine connects; the M5 remote gets it with its next Load
+        patterns &amp; settings. Raising it gives the controls more room at the top; it does not change what a given
+        level feels like until you use that room.</p>
+    </div>
     <div class="card">
       <h2>System-wide hotkeys <small id="hotkeyState" class="muted"></small></h2>
       <table class="devices">

@@ -458,6 +458,47 @@ $("remoteFlashGo").addEventListener("click", () => {
 });
 
 // ---------------------------------------------------------------- hotkeys
+// ---- the current cap (Settings) ----
+let capSaved = null;
+async function loadCap() {
+  const r = (await api("/api/settings/cap")).data;
+  if (!r || r.amps === undefined) return;
+  capSaved = Math.round(r.amps * 1000);
+  $("capRange").min = Math.round(r.min * 1000);
+  $("capRange").max = Math.round(r.max * 1000);
+  $("capRange").value = capSaved;
+  capShow();
+  $("capState").textContent = `now ${capSaved} mA`;
+}
+function capShow() {
+  const v = Number($("capRange").value);
+  $("capValue").textContent = `${v} mA`;
+  $("capSave").disabled = v === capSaved;
+  $("capConfirm").hidden = true;
+  $("capMsg").textContent = v > capSaved ? `raising from ${capSaved} mA` : v < capSaved ? `lowering from ${capSaved} mA` : "";
+}
+async function capWrite() {
+  const v = Number($("capRange").value);
+  let r = null;
+  try {
+    r = await (await fetch("/api/settings/cap", { method: "PUT", headers: { "Content-Type": "application/json" },
+                                                    body: JSON.stringify({ amps: v / 1000 }) })).json();
+  } catch (e) { r = { error: String(e) }; }
+  $("capConfirm").hidden = true;
+  if (r && r.ok) { capSaved = Math.round(r.amps * 1000); capShow(); $("capState").textContent = `now ${capSaved} mA`; $("capMsg").textContent = r.note; }
+  else $("capMsg").textContent = (r && r.error) || "not saved";
+}
+$("capRange").addEventListener("input", capShow);
+$("capSave").addEventListener("click", () => {
+  const v = Number($("capRange").value);
+  if (v > capSaved) {               // raising asks once more; lowering is always fine
+    $("capConfirm").hidden = false;
+    $("capMsg").textContent = `Raise the cap from ${capSaved} to ${v} mA?`;
+  } else capWrite();
+});
+$("capConfirm").addEventListener("click", capWrite);
+loadCap();
+
 async function loadHotkeys() {
   const r = await api("/api/hotkeys");
   const rows = $("hotkeyRows");
