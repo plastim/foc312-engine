@@ -3,8 +3,8 @@
 **ET-312 emulation on the FOC-Stim V4.**
 
 The **ET-312B** is a long-running e-stim box, still one of the best-known in the hobby. It's loved for its built-in
-patterns: Waves, Stroke, Climb, Orgasm and more, each shaping the pulses over time in its own way, with an **MA**
-knob that changes how each one moves. Its companion software, ErosLink, lets people write their own patterns
+patterns: Waves, Stroke, Climb, Orgasm and more, each shaping the pulses over time in its own way, with an **MA
+(Multi Adjust)** knob that changes how each one moves. Its companion software, ErosLink, lets people write their own patterns
 (`.elk` files), and a lot of them have been shared over the years.
 
 foc312 brings that to the **[FOC-Stim V4](https://github.com/diglet48/FOC-Stim)**, a modern open-hardware e-stim
