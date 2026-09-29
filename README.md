@@ -45,6 +45,34 @@ before opening restim, and the other way round.
 - **It tells you what happened.** Live measured current, and a trip report when the box's protection stops the
   output: what was measured, where in the pulse, and what was asked for.
 
+### Made for PlaStim electrodes
+
+[PlaStim electrodes](https://plastim.net/) are built around one idea: **separate contacts for separate nerves, and
+you choose which ones each channel drives.**
+- The Pinnacle has a corona side and a frenulum side.
+- The Clarifier is a bipolar ring.
+- The probes have multi-zone heads.
+- The ball bar and underball rings reach further.
+
+That's more contacts than a two-channel box can use at once, which is why PlaStim made the
+[Switch 1](https://plastim.net/switch-1/). foc312 is the same idea built into the box:
+
+- **Wire four contacts once, then re-route them live.** Plug four PlaStim contacts into the four outputs. Channels A
+  and B each go to any pair, changed from the player or the remote without touching a cable. For example, the
+  **3-2-1 Blastoff** is A from the corona side to a base ring, and B from the frenulum side to an underball ring.
+  Swap the order with a couple of knob turns and you'll feel why the order matters.
+- **Shared-contact (tri-phase) setups are built in.** A probe head as the common for both channels (A: head to the
+  corona side, B: head to the frenulum side) is just two routes that share an electrode.
+- **Switching resets sensitivity.** Nerves left alone for a few seconds come back fresh. Moving a channel to
+  another pair and back does that without unplugging anything. A Switch 1 on one of the outputs still adds more
+  zones.
+- **Surface area does what the design says.** The FOC-Stim holds the current constant, so when the contact area
+  changes (a bigger or smaller electrode, or the Switch 1's A+B position), only **where** the sensation
+  concentrates changes: towards the smaller electrode. On a voltage-driven box, adding area also changes **how much**
+  current flows, so focus and strength shift together.
+- **Polarity becomes a real control.** On a Pinnacle-to-base-ring channel, a flip moves the sensation from an
+  intense corona focus to a harder shaft sensation ([why](#why-flip-the-polarity--a--b)).
+
 ### Limits (being honest)
 
 - **No audio modes.** The ET-312's Audio 1, 2 and 3 play from a sound input, and there isn't one here. For
