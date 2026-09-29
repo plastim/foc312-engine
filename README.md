@@ -1,9 +1,34 @@
 # PlaStim foc312 engine
 
-The PC app for **FOC-Stim** boxes running the **foc312** firmware: ET-312-style patterns on two independent
-channels, any wiring and polarity, several pulse shapes, the full safety stack, and the **M5 remote**.
+**The ET-312 you know, on better hardware.**
 
-Everything runs on your own computer. Nothing is sent anywhere.
+foc312 turns a **FOC-Stim V4** into an ET-312B. It runs the patterns you know (Waves, Stroke, Climb, Orgasm and
+the rest; only the three audio modes are left out), your ErosLink routines, and the MA knob, **with the ET-312's
+own timing**. It isn't an imitation that
+"feels a bit like it". It runs the ET-312B's actual mode programs on a faithful re-implementation of the 312's
+routine engine, tick for tick at the box's own 244 Hz, checked against the annotated disassembly of the original
+firmware. ErosLink routines are compiled the way ErosLink itself compiles them, and the result is checked against
+ErosLink's own output for every routine it ships with.
+
+Then it plays all of that through hardware the 312 never had:
+
+- **Current-controlled output.** The ET-312 pushes voltage through transformers, so what you feel drifts as your
+  skin and the pads change. The FOC-Stim measures the current in every pulse and delivers what was asked for.
+- **Four electrodes, any wiring.** Channels A and B each go on **any pair** of the four electrodes, in either
+  direction, changed live with no rewiring: the same pad on both channels, a triangle across three pads, A/B split
+  across four.
+- **Pulse shapes** the 312 can't make: rounded, soft square, triangle, and a continuous taper from rounded towards
+  square, all at the same charge per pulse. They make a real difference in feel.
+- **Safety in layers.** A hard current cap, slow start, a deadman that ramps to zero if control goes quiet, a
+  per-pulse over-current stop in the box, and the box's own knob as a master limit that no software can exceed.
+- **Wireless and battery powered**, with the **M5 remote**: a handheld that plays everything by itself, no
+  computer needed.
+- **Your data stays home.** Everything runs on your own computer, and nothing is sent anywhere.
+
+**Restim still works.** The foc312 firmware keeps every stock FOC-Stim mode, so
+[restim](https://github.com/diglet48/restim) (diglet48's app for continuous three- and four-phase waveforms,
+funscripts and audio) works on the same box, as before, with no reflashing. Use one or the other: close this app
+before opening restim, and the other way round.
 
 | | |
 |---|---|
