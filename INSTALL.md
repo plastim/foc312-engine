@@ -107,7 +107,8 @@ The hub's **Play** tab has a checklist that ticks itself as you go:
 3. Turn the **box's own knob low**. It is the master limit: nothing the app does can go above it.
 4. Put the electrodes on (below the waist; see the safety notes).
 5. Press **ARM**. The output ramps up slowly from zero.
-6. Raise **Level A** and **Level B** a little at a time.
+6. Raise **Level A** and **Level B** a little at a time. If one pad of a channel feels much stronger than the
+   other, try its **⇄** button ([why](README.md#why-flip-the-polarity--a--b)).
 7. **STOP** any time: the red button, **Space** in the player, or the **Pause** key anywhere on the computer.
 
 ## 8. Patterns
@@ -136,6 +137,10 @@ Out of the box the player has the PlaStim routines. Two more groups need files y
 Restart the hub after either change.
 
 ## 9. The M5 remote (optional)
+
+The PC app is only needed to **set the remote up**. After that the remote plays the patterns by itself, straight to
+the box over Wi-Fi, and the PC can be off. The remote's README has the full walk-through with screenshots and
+diagrams: **[setting up the M5 remote](https://github.com/plastim/foc312-m5remote#setting-it-up)**. In short:
 
 1. Plug the remote in with USB-C and switch it on. **Detect** shows it as **M5 remote**.
 2. On the **M5 remote** tab, flash the newest foc312-m5remote release (**Flash…**, then **Flash now**; the hub

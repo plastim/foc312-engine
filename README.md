@@ -74,6 +74,19 @@ The engine enforces its own limits on top of the box's: a hard current cap, a sl
 firmware keeps the FOC-Stim's own safety envelope (self-test, per-pulse over-current stop, 0.2 A body cap, 4 s comms
 keepalive). **This is not a medical device. You use it at your own risk.**
 
+## Why flip the polarity (⇄ A / ⇄ B)
+
+Each channel has a direction: which of its two pads is negative during the first, stronger half of every pulse.
+**The sensation is strongest under the pad that is negative in that first half.** So the player's **⇄ A** and
+**⇄ B** buttons move the focus from one pad to the other without moving anything:
+- when one pad feels sharp and the other barely at all, a flip swaps them;
+- with pads of different sizes or in different places, one direction usually feels better;
+- the flip is immediate, so compare the two directions back and forth.
+
+The difference is biggest with the lopsided ET-312-style pulses (a short strong half and a long weak one). Both
+directions are equally safe: every pulse is balanced (the same charge each way), so nothing builds up under either
+pad.
+
 ## Patterns
 
 The player and the remote use three kinds of patterns:
