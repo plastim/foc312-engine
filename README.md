@@ -15,6 +15,19 @@ Everything runs on your own computer. Nothing is sent anywhere.
 > **Status:** early and actively developed. Windows is the tested platform; Linux and macOS should work but are
 > not tested yet.
 
+## Start here
+
+**New to this? Follow the [installation guide](INSTALL.md)**, step by step from a bare Windows computer to your
+first session: Python, the app, flashing the box, the M5 remote, patterns, troubleshooting.
+
+This is the home of the PlaStim foc312 family. You only install this app; it puts the firmware on your devices:
+
+| Project | What it is |
+|---|---|
+| **foc312-engine** (this) | the PC app: hub, player, safety stack. **Start here.** |
+| [foc312](https://github.com/plastim/foc312) | the firmware for the FOC-Stim box (a fork of diglet48's). The hub flashes it. |
+| [foc312-m5remote](https://github.com/plastim/foc312-m5remote) | the firmware for the handheld M5 remote. The hub flashes it. |
+
 ## What you need
 
 - A **FOC-Stim V4** box ([diglet48/FOC-Stim](https://github.com/diglet48/FOC-Stim)). The app flashes it with the
@@ -24,22 +37,16 @@ Everything runs on your own computer. Nothing is sent anywhere.
   [foc312-m5remote](https://github.com/plastim/foc312-m5remote) firmware.
 - Python 3.13 (a one-click installer is planned).
 
-## Install
+## Install and run
+
+The [installation guide](INSTALL.md) has every step. In short, with Python 3.13 and Git installed:
 
 ```powershell
 git clone https://github.com/plastim/foc312-engine
 cd foc312-engine
 py -3.13 -m venv venv
 .\venv\Scripts\python.exe -m pip install -r requirements.txt
-```
-
-On Linux / macOS use `python3.13 -m venv venv` and `venv/bin/python`. On Linux, add yourself to the `dialout` group
-to use serial ports.
-
-## Run
-
-```powershell
-.\venv\Scripts\python.exe -m stimengine.app
+.\start-hub.bat
 ```
 
 The hub opens in your browser. The **Play** tab walks you through the first session:
