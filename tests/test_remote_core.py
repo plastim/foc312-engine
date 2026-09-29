@@ -233,7 +233,7 @@ def test_climb_like_eroslink_routine_matches(runner):
 # ---------------------------------------------------------------- the user's own data (skipped when absent)
 
 @pytest.mark.needs_et312_data
-@pytest.mark.parametrize("name", sorted(M.IMPLEMENTED + M.STUBBED + ("split",)))
+@pytest.mark.parametrize("name", sorted(M.IMPLEMENTED + M.STUBBED + ("split", "climb_slow", "climb_hold")))
 def test_builtin_mode_matches(runner, name):
     fw = fwdata.default()
     blocks = {k: encode_ops(v) for k, v in fw.blocks.items()}

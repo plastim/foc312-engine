@@ -61,6 +61,7 @@
       <input id="master" type="range" min="0" max="1000" value="1000">
       <output id="masterOut">100%</output>
     </label>
+    <div class="fine master-note" id="masterNote" title="What reaches the pads: this app's Master x the box's own volume knob">box knob — </div>
     <div class="knob"><span>Box knob <small class="muted">(the box's own volume, on top of all this)</small></span> <strong id="knob">—</strong></div>
     <div class="shape-row" id="shapeRow">
       <span class="lbl">Pulse shape <small id="shapeNote" class="note"></small></span>
@@ -85,6 +86,7 @@
       </div>
       <button id="revA" class="rev ch-a" title="Reverse which end of A leads">⇄ A</button>
       <button id="revB" class="rev ch-b" title="Reverse which end of B leads">⇄ B</button>
+      <button id="swapAB" class="rev" title="Swap A and B: the pattern's channels trade wire pairs; each pair keeps its level">A ⇆ B</button>
     </div>
     <svg id="diagram" viewBox="0 0 400 190" role="img" aria-label="Connector routing diagram"></svg>
     <div class="hint" id="routeHint">Pick a channel, then tap the leading socket, then the other end.</div>

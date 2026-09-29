@@ -197,3 +197,8 @@ body.pip-body { overflow: hidden; }
 .appnav .plastim { font-size: 14px; }
 .appnav .plastim .mark { width: 20px; height: 10px; }
 .appnav a.plastim { color: var(--ink); }   /* the nav links are muted; the wordmark is not */
+
+.master-note { margin: -4px 0 8px; color: var(--muted, #8b93a3); font-size: 12px; text-align: right; }
+.pip-boxvol { font-size: 12px; color: var(--muted, #8b93a3); text-align: right; margin: -4px 0 4px; }
+.pip-routes { display: flex; gap: 6px; margin: 4px 0; }
+.pip-routes button { flex: 1; }

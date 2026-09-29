@@ -25,7 +25,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from ..et312 import modes as M
-from ..et312.foc312 import BUILTIN_MODES
+from ..et312.foc312 import BUILTIN_MODES, BUILTIN_VARIANTS
 from ..et312.vm import decode_module, encode_ops
 
 MAGIC = b"FP31"
@@ -168,6 +168,9 @@ def collect(*, firmware=None, elk_dir: str | Path | None = None, ours_dir: str |
         builtin_blocks = {k: encode_ops(v) for k, v in fw.blocks.items() if k < N_BUILTIN_BLOCKS}
         for key, name in BUILTIN_MODES:
             entries.append(Entry(name, GROUP_BUILTIN, mode=M.MODE_BY_NAME[key]))
+            for vkey, vname, after, _ in BUILTIN_VARIANTS:     # PlaStim variants follow the mode they vary
+                if after == key:
+                    entries.append(Entry(vname, GROUP_BUILTIN, mode=M.MODE_BY_NAME[vkey]))
     else:
         notes.append("no ET-312 firmware data: built-in modes left out (see stimengine/et312/fwdata.py)")
 

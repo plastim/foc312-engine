@@ -305,7 +305,7 @@ class ET312Engine:
                 return False
             if not v["held"] and f < fmin - step:              # the last value before the drop: hold it
                 v["held"] = True
-                v["hold"] = int(round(self.PEAK_HOLD_FRACTION * (self._clock() - v["start"])))
+                v["hold"] = (self._clock() - v["start"] + 2) // 4   # PEAK_HOLD_FRACTION, rounded (as the C core)
                 if v["hold"] > 0:
                     v["hold"] -= 1
                     return False

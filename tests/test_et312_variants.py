@@ -66,7 +66,12 @@ def test_variant_frames_carry_their_own_name_and_steady_time():
     assert [f.tick for f in fr] == list(range(1, len(fr) + 1))   # time runs on while the VM is paused
 
 
-def test_variants_are_not_offered_to_the_remote_yet():
-    from stimengine.et312.foc312 import BUILTIN_MODES
-    keys = {k for k, _ in BUILTIN_MODES}
-    assert "climb_slow" not in keys and "climb_hold" not in keys
+@pytest.mark.needs_et312_data
+def test_the_remote_pack_carries_the_variants_after_climb():
+    from stimengine.remote import pack as P
+    pk, _ = P.collect()
+    names = [e.name for e in pk.entries if e.kind == P.KIND_BUILTIN]
+    i = names.index("Climb")
+    assert names[i + 1:i + 3] == ["Climb (slow finish)", "Climb (peak hold)"]
+    modes = {e.name: e.mode for e in pk.entries if e.kind == P.KIND_BUILTIN}
+    assert modes["Climb (slow finish)"] == M.CLIMB_SLOW and modes["Climb (peak hold)"] == M.CLIMB_HOLD

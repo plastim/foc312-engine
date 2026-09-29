@@ -64,8 +64,8 @@ BUILTIN_MODES: tuple[tuple[str, str], ...] = (
     ("random1", "Random 1"), ("random2", "Random 2"), ("toggle", "Toggle"), ("orgasm", "Orgasm"),
     ("torment", "Torment"), ("phase1", "Phase 1"), ("phase2", "Phase 2"), ("phase3", "Phase 3"),
 )
-# PlaStim variants of built-in modes (modes.VARIANTS): the player only, for now. NOT in BUILTIN_MODES, which the M5
-# remote's pack is built from: the remote's C core doesn't know them yet.
+# PlaStim variants of built-in modes (modes.VARIANTS): in the player, and in the M5 remote's pack (remote/pack.py) for
+# a remote on foc312-m5remote v1.02 or later (its C core plays them; an older remote refuses the pack).
 BUILTIN_VARIANTS: tuple[tuple[str, str, str, str], ...] = (
     ("climb_slow", "Climb (slow finish)", "climb",
      "PlaStim variant: Climb, with the last 10 % of every climb three times slower"),
@@ -562,6 +562,19 @@ class Foc312Runner:
 
     def reverse(self, ch: int) -> int:
         return self.set_route(ch, F.reverse_route(self.routes[ch]))
+
+    def swap(self) -> list[int]:
+        """Swap A and B, like the M5 remote's swap: the pattern's two channels trade wire pairs, and each wire pair
+        keeps its level (levels stay with the wires), so a swap never moves a high level onto the other pads."""
+        if self.output == "stock":
+            raise Foc312Error("routing needs fork firmware (stock firmware drives one field)")
+        a, b = F.validate_route(self.routes[1]), F.validate_route(self.routes[0])
+        self.routes[0], self.routes[1] = a, b
+        self.levels[0], self.levels[1] = self.levels[1], self.levels[0]
+        self.et.set_levels(self.levels[0], self.levels[1])
+        self._write_outputs()
+        self._setup_changed()
+        return list(self.routes)
 
     def _fork_v2(self) -> bool:
         return self._engine_live() and int(getattr(self.engine, "fork_version", 0) or 0) >= 2

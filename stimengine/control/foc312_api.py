@@ -144,6 +144,8 @@ class Foc312API:
             a, b = F.validate_route(d.get("a")), F.validate_route(d.get("b"))
             run.set_route(0, a)
             run.set_route(1, b)
+        elif cmd == "swap":
+            return {"ok": True, "routes": run.swap()}
         elif cmd == "reverse":
             return {"ok": True, "code": run.reverse(_ch(d))}
         elif cmd == "pads":

@@ -769,3 +769,13 @@ async def test_master_arm_ramps_to_it_lowering_is_instant_raising_slow_starts(tm
     assert eng._master_now == 0.0, "STOP still zeroes it"
     await eng.stop()
     box.stop()
+
+
+@pytest.mark.needs_et312_data
+def test_swap_trades_the_routes_and_each_wire_pair_keeps_its_level():
+    run = Foc312Runner()
+    run.set_levels(0.7, 0.2)
+    run.routes = [13, 24]
+    assert run.swap() == [24, 13]
+    assert run.levels == [0.2, 0.7], "the level follows its wires"
+    assert run.swap() == [13, 24] and run.levels == [0.7, 0.2]

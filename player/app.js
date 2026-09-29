@@ -119,6 +119,7 @@ function onState(s, full) {
   syncSlider("levelA", s.levels[0], "levelAOut");
   syncSlider("levelB", s.levels[1], "levelBOut");
   if (s.master_set !== undefined) syncSlider("master", s.master_set, "masterOut");
+  $("masterNote").textContent = boxVolText(s);
   $("knob").textContent = s.knob.value != null ? pct(s.knob.value) + (s.knob.locked ? " (locked)" : "") : s.knob.note.replace(/^knob: /, "");
 
   // routing
@@ -204,6 +205,7 @@ $("taperAmt").addEventListener("input", () => {
   if ($("taperBtn").getAttribute("aria-checked") === "true") send("shape", { value: "taper" + $("taperAmt").value });
 });
 $("revA").addEventListener("click", () => send("reverse", { ch: "a" }));
+$("swapAB").addEventListener("click", () => send("swap"));
 $("revB").addEventListener("click", () => send("reverse", { ch: "b" }));
 document.querySelectorAll(".padbtns button").forEach((b) => b.addEventListener("click", () => {
   send("pads", { pad: Number(b.dataset.pad), on: b.getAttribute("aria-pressed") !== "true" });
@@ -554,6 +556,13 @@ function pipCopyStyles(doc) {
     if (a.name.startsWith("data-")) doc.documentElement.setAttribute(a.name, a.value);
   }
 }
+// the box's own volume knob and what reaches the pads: Master x box knob (levels come on top per channel)
+function boxVolText(s) {
+  const k = s && s.knob && s.knob.value != null ? s.knob.value : null;
+  const m = s && s.master_set != null ? s.master_set : null;
+  if (k == null) return "box knob — (not reported)";
+  return m == null ? `box knob ${pct(k)}` : `box knob ${pct(k)} → ${pct(m * k)} out`;
+}
 function pipSlider(doc, id, label, cls, onSend) {
   const lab = doc.createElement("label");
   lab.className = "slider " + cls;
@@ -572,7 +581,7 @@ function pipSlider(doc, id, label, cls, onSend) {
 async function openPip() {
   if (pipWin) { pipWin.focus(); return; }
   try {
-    pipWin = await window.documentPictureInPicture.requestWindow({ width: 300, height: 330 });
+    pipWin = await window.documentPictureInPicture.requestWindow({ width: 300, height: 450 });
   } catch (err) {
     showError("could not open the pop-out: " + err.message);
     return;
@@ -588,8 +597,19 @@ async function openPip() {
     `<div class="pip-row"><button class="arm" data-pip="arm" title="ARM: master slow-starts from 0">ARM</button>` +
     `<span class="pip-state stopped" data-pip="state">STOPPED</span><span class="pip-dot" data-pip="dot" title="link"></span></div>` +
     `<div class="pip-pattern" data-pip="pattern">—</div>`;
+  const rt = doc.createElement("div");
+  rt.className = "pip-routes";
+  rt.innerHTML = `<button class="rev ch-a" data-pip="revA" title="Reverse which end of A leads">⇄ A</button>` +
+    `<button class="rev" data-pip="swap" title="Swap A and B (each wire pair keeps its level)">A ⇆ B</button>` +
+    `<button class="rev ch-b" data-pip="revB" title="Reverse which end of B leads">⇄ B</button>`;
+  root.appendChild(rt);
   root.appendChild(pipSlider(doc, "levelA", "A", "ch-a", (v) => send("levels", { a: v })));
   root.appendChild(pipSlider(doc, "levelB", "B", "ch-b", (v) => send("levels", { b: v })));
+  root.appendChild(pipSlider(doc, "master", "Master", "master", (v) => send("master", { value: v })));
+  const bv = doc.createElement("div");
+  bv.className = "pip-boxvol";
+  bv.dataset.pip = "boxvol";
+  root.appendChild(bv);
   root.appendChild(pipSlider(doc, "ma", "MA", "", (v) => send("ma", { value: v })));
   const foot = doc.createElement("div");
   foot.className = "pip-foot";
@@ -598,6 +618,9 @@ async function openPip() {
   doc.body.appendChild(root);
   root.querySelector('[data-pip="stop"]').addEventListener("click", () => send("stop"));
   root.querySelector('[data-pip="arm"]').addEventListener("click", () => send("arm"));
+  root.querySelector('[data-pip="revA"]').addEventListener("click", () => send("reverse", { ch: "a" }));
+  root.querySelector('[data-pip="revB"]').addEventListener("click", () => send("reverse", { ch: "b" }));
+  root.querySelector('[data-pip="swap"]').addEventListener("click", () => send("swap"));
   doc.addEventListener("keydown", onHotkey);
   doc.addEventListener("keyup", onHotkeyUp);
   const hb = pipWin.setInterval(() => { if (wsOpen) ws.send(JSON.stringify({ cmd: "hb" })); }, 500);
@@ -623,7 +646,8 @@ function updatePip(s) {
   b.textContent = opt ? opt.textContent : s.pattern.id;
   q("pattern").append("Pattern ", b);
   const sliders = doc.querySelectorAll(".pip .slider");
-  [["levelA", s.levels[0]], ["levelB", s.levels[1]], ["ma", s.ma]].forEach(([id, v], i) => {
+  q("boxvol").textContent = boxVolText(s);
+  [["levelA", s.levels[0]], ["levelB", s.levels[1]], ["master", s.master_set ?? 1], ["ma", s.ma]].forEach(([id, v], i) => {
     if ((pipHold[id] || 0) > Date.now()) return;
     sliders[i].querySelector("input").value = Math.round(v * 1000);
     sliders[i].querySelector("output").textContent = pct(v);
