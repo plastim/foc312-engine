@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Player · PlaStim</title>
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<nav class="appnav" aria-label="App">
+  <a class="plastim" href="http://127.0.0.1:8320/" aria-label="PlaStim" title="PlaStim"><svg class="mark" viewBox="0 0 28 14" aria-hidden="true"><polyline points="1,7 6,7 6,2 12,2 12,12 18,12 18,7 27,7" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/></svg><span class="word">Pla<span class="stim">Stim</span></span></a>
+  <a href="http://127.0.0.1:8320/" title="Boxes, firmware, the remote, hotkeys">Hub</a>
+  <a href="/" aria-current="page">Player</a>
+  <span class="spacer"></span>
+  <span id="popoutNote" class="muted" hidden></span>
+  <button id="popout" title="A small always-on-top window with STOP, levels and MA (Chrome / Edge)">Pop out</button>
+</nav>
+<header class="top">
+  <div class="brand">Player <span id="conn" class="pill off" title="link to the engine process">offline</span></div>
+  <div class="outputs" role="radiogroup" aria-label="Output">
+    <button data-out="preview" role="radio">Preview</button>
+    <button data-out="stock" role="radio">Stock fw</button>
+    <button data-out="fork" role="radio">Fork fw</button>
+  </div>
+  <div class="safety">
+    <button id="arm" class="arm" aria-label="ARM" title="ARM: allow output; master slow-starts from 0">ARM</button>
+    <button id="stop" class="stop" aria-label="STOP" title="STOP: immediate zero (disarm)">STOP</button>
+  </div>
+</header>
+<div id="hotkeys" class="hotkeys">Keys: <b>Q/A</b> Level A · <b>W/S</b> Level B · <b>E/D</b> both · <b>R/F</b> MA · 1 %, <b>Shift</b> 5 % · <b>X</b> both −10 % · <b>Space/Esc</b> STOP · ARM is a click</div>
+<div id="status" class="status"></div>
+<div id="error" class="error" hidden></div>
+
+<main>
+  <section class="card pattern">
+    <h2>Pattern</h2>
+    <select id="pattern" aria-label="Pattern"></select>
+    <div class="meta"><span id="modeName"></span> <span id="phaseMode" class="muted"></span></div>
+    <label class="check" title="A real ET-312 restarts its level ramp (61 % to 100 % over about 3 s) on every mode change. Skip it to compare patterns at full level straight away."><input type="checkbox" id="skipRamp"> Skip the mode-change ramp (compare patterns)</label>
+    <label class="slider">
+      <span class="lbl">MA <small class="muted">multi-adjust</small></span>
+      <input id="ma" type="range" min="0" max="1000" value="500">
+      <output id="maOut">50%</output>
+    </label>
+  </section>
+
+  <section class="card levels">
+    <h2>Levels</h2>
+    <label class="slider ch-a">
+      <span class="lbl">Level A</span>
+      <input id="levelA" type="range" min="0" max="1000" value="0">
+      <output id="levelAOut">0%</output>
+    </label>
+    <label class="slider ch-b">
+      <span class="lbl">Level B</span>
+      <input id="levelB" type="range" min="0" max="1000" value="0">
+      <output id="levelBOut">0%</output>
+    </label>
+    <div class="knob"><span>Both: device knob (master)</span> <strong id="knob">—</strong></div>
+    <div class="shape-row" id="shapeRow">
+      <span class="lbl">Pulse shape <small id="shapeNote" class="note"></small></span>
+      <div class="shapes" role="radiogroup" aria-label="Pulse shape (both channels)">
+        <button data-shape="rounded" role="radio" title="Half-sine phases (the fork's original shape)">Rounded</button>
+        <button data-shape="square" role="radio" title="Square phases, like the ET-312's drive. Bench only for now: its sharp edges tripped the over-current stop on skin (2026-09-26). Use Soft square on skin.">Square (bench)</button>
+        <button data-shape="soft" role="radio" title="Square with 20 µs sloped edges">Soft square</button>
+        <button data-shape="triangle" role="radio" class="v7" title="Linear up to the middle and down: a sharp peak (fork v7)">Triangle</button>
+        <button data-shape="taper" role="radio" class="v7" id="taperBtn" title="Rounded edges with a flat top: 0 % is rounded, higher is squarer (fork v7). Stops at 80 %: above it the edges are sharper than soft square's.">Taper</button>
+        <label class="taper v7" title="Taper: flat-top share of the pulse"><input id="taperAmt" type="range" min="0" max="80" step="10" value="50"> <output id="taperOut">50%</output></label>
+      </div>
+      <p class="fine">Same charge per pulse at any shape: switching never jumps the strength.</p>
+    </div>
+  </section>
+
+  <section class="card routing" id="routingCard">
+    <h2>Routing <small id="routingNote" class="note"></small></h2>
+    <div class="route-controls">
+      <div class="chsel" role="radiogroup" aria-label="Channel to reassign">
+        <button data-ch="a" class="ch-a">A <b id="routeA">12</b></button>
+        <button data-ch="b" class="ch-b">B <b id="routeB">34</b></button>
+      </div>
+      <button id="revA" class="rev ch-a" title="Reverse which end of A leads">⇄ A</button>
+      <button id="revB" class="rev ch-b" title="Reverse which end of B leads">⇄ B</button>
+    </div>
+    <svg id="diagram" viewBox="0 0 400 190" role="img" aria-label="Connector routing diagram"></svg>
+    <div class="hint" id="routeHint">Pick a channel, then tap the leading socket, then the other end.</div>
+    <div class="presets">
+      <button data-preset="12,34">12 / 34</button>
+      <button data-preset="34,12">34 / 12</button>
+      <button data-preset="23,41">23 / 41</button>
+      <button data-preset="13,24">13 / 24</button>
+    </div>
+    <div class="pads" id="padsRow">
+      <span class="lbl">Pads connected</span>
+      <div class="padbtns" role="group" aria-label="Which electrodes have a pad on them">
+        <button data-pad="1" aria-pressed="true" title="Electrode 1 has a pad">1</button>
+        <button data-pad="2" aria-pressed="true" title="Electrode 2 has a pad">2</button>
+        <button data-pad="3" aria-pressed="true" title="Electrode 3 has a pad">3</button>
+        <button data-pad="4" aria-pressed="true" title="Electrode 4 has a pad">4</button>
+      </div>
+    </div>
+    <div class="note" id="blockedNote"></div>
+    <p class="fine">A channel routed to an electrode without a pad stays silent: an open route makes the box's
+      drive climb until its over-current stop latches.</p>
+    <p class="fine">▼ marks the leading end (cathodic first in firmware convention). Which physical terminal is truly
+      negative-first is confirmed on the bench (firmware TEST-PLAN step 5); the swap itself is real either way.</p>
+  </section>
+
+  <section class="card channel ch-a" id="chA">
+    <h2>Channel A <small class="nums" id="numsA"></small></h2>
+    <canvas class="glyph" id="glyphA" width="360" height="110"></canvas>
+    <canvas class="strip" id="stripA" width="360" height="90"></canvas>
+    <div class="legend"><span class="sw fill"></span>intensity <span class="sw line"></span>rate (log, 15–415 Hz) · last 10 s</div>
+  </section>
+
+  <section class="card channel ch-b" id="chB">
+    <h2>Channel B <small class="nums" id="numsB"></small></h2>
+    <canvas class="glyph" id="glyphB" width="360" height="110"></canvas>
+    <canvas class="strip" id="stripB" width="360" height="90"></canvas>
+    <div class="legend"><span class="sw fill"></span>intensity <span class="sw line"></span>rate (log, 15–415 Hz) · last 10 s</div>
+  </section>
+
+  <details class="card advanced">
+    <summary>Advanced</summary>
+    <div class="row">
+      <label>Power level
+        <select id="power"><option value="low">Low</option><option value="normal">Normal</option><option value="high">High</option></select>
+      </label>
+      <button id="ramp" title="Front-panel 'Start Ramp Up'">Start ramp</button>
+    </div>
+    <div id="advSliders"></div>
+    <p class="fine">Raw ET-312 register values (Advanced menu ranges). Engine: <span id="engineInfo">—</span></p>
+  </details>
+</main>
+<script src="/static/app.js"></script>
+</body>
+</html>

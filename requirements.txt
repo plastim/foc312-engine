@@ -1,0 +1,13 @@
+protobuf>=6.31,<7
+pyserial>=3.5
+pyserial-asyncio>=0.6
+numpy>=2.0
+aiohttp>=3.10
+websockets>=13
+crc
+pytest
+imageio-ffmpeg>=0.5     # bundled ffmpeg fallback for the audio track analyzer (system ffmpeg preferred)
+intelhex                # firmware/flash.py
+stm32loader @ git+https://github.com/diglet48/stm32loader@c71b592ae5c28cf7ef846baa7d06c13291fc009c   # firmware/flash.py (restim's fork; knows the G473)
+esptool>=5.0             # the PC app flashes the M5 remote (stimengine/app); remote/tools/package_m5.py
+cryptography>=42        # firmware releases: ed25519 signatures (stimengine/app/updates.py, tools/release_*.py)

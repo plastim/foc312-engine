@@ -1,0 +1,199 @@
+:root {
+  --bg: #f4f3ef;
+  --card: #ffffff;
+  --ink: #1c1d21;
+  --muted: #6b6f78;
+  --line: #dcdad3;
+  --ch-a: #d9731f;
+  --ch-b: #2b7fd1;
+  --ok: #2f9a5b;
+  --warn: #c98a12;
+  --danger: #c8322b;
+  --danger-ink: #ffffff;
+  --arm: #1f7a4a;
+  --socket: #e9e7e0;
+  --socket-ink: #1c1d21;
+  --grid: #ebe9e2;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #121316;
+    --card: #1b1d22;
+    --ink: #e8e9ec;
+    --muted: #9296a0;
+    --line: #2c2f36;
+    --ch-a: #f0923f;
+    --ch-b: #4ea3f2;
+    --ok: #46c07a;
+    --warn: #e0a93a;
+    --danger: #e0473f;
+    --arm: #2c9d62;
+    --socket: #2a2d34;
+    --socket-ink: #e8e9ec;
+    --grid: #24262c;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #121316; --card: #1b1d22; --ink: #e8e9ec; --muted: #9296a0; --line: #2c2f36;
+  --ch-a: #f0923f; --ch-b: #4ea3f2; --ok: #46c07a; --warn: #e0a93a; --danger: #e0473f; --arm: #2c9d62;
+  --socket: #2a2d34; --socket-ink: #e8e9ec; --grid: #24262c; color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font: 15px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  overflow-x: hidden;
+}
+button, select, input { font: inherit; color: inherit; }
+button {
+  background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: 6px 12px; cursor: pointer;
+}
+button:disabled { opacity: .45; cursor: not-allowed; }
+select { background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: 6px 8px; max-width: 100%; }
+small, .muted { color: var(--muted); }
+
+.top {
+  position: sticky; top: 0; z-index: 5;
+  display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between;
+  padding: 10px 16px; background: var(--bg); border-bottom: 1px solid var(--line);
+}
+.brand { font-weight: 700; font-size: 18px; display: flex; gap: 8px; align-items: center; }
+.pill { font-size: 12px; font-weight: 600; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--line); }
+.pill.on { color: var(--ok); border-color: var(--ok); }
+.pill.off { color: var(--muted); }
+.outputs { display: flex; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+.outputs button { border: 0; border-radius: 0; padding: 6px 12px; }
+.outputs button[aria-checked="true"] { background: var(--ink); color: var(--bg); }
+.safety { display: flex; gap: 8px; }
+.arm { background: var(--card); border: 2px solid var(--arm); color: var(--arm); font-weight: 700; min-width: 72px; }
+.arm.armed { background: var(--arm); color: #fff; }
+.stop { background: var(--danger); color: var(--danger-ink); border: 0; font-weight: 800; font-size: 18px;
+        min-width: 110px; padding: 10px 18px; letter-spacing: .04em; }
+.status { padding: 6px 16px; font-size: 13px; color: var(--muted); }
+.status b { color: var(--ink); font-weight: 600; }
+.status .warn { color: var(--warn); font-weight: 600; }
+.status .bad { color: var(--danger); font-weight: 700; }
+.error { margin: 0 16px 8px; padding: 8px 12px; border-radius: 8px; border: 1px solid var(--danger); color: var(--danger); }
+
+main {
+  display: grid; gap: 12px; padding: 8px 16px 32px;
+  grid-template-columns: repeat(auto-fit, minmax(min(320px, 100%), 1fr));
+  max-width: 1200px; margin: 0 auto;
+}
+.card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; min-width: 0; }
+.card h2 { margin: 0 0 8px; font-size: 15px; display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
+.card.channel.ch-a h2 { color: var(--ch-a); }
+.card.channel.ch-b h2 { color: var(--ch-b); }
+.card h2 .nums { color: var(--muted); font-weight: 500; font-variant-numeric: tabular-nums; }
+.pattern select { width: 100%; }
+.meta { margin: 6px 0 4px; font-size: 13px; }
+
+.slider { display: grid; grid-template-columns: 96px 1fr 52px; gap: 8px; align-items: center; margin: 8px 0; }
+.slider .lbl { font-weight: 600; }
+.slider output { text-align: right; font-variant-numeric: tabular-nums; }
+.slider input { width: 100%; accent-color: var(--ink); }
+.slider.ch-a input { accent-color: var(--ch-a); }
+.slider.ch-b input { accent-color: var(--ch-b); }
+.slider.ch-a .lbl { color: var(--ch-a); }
+.slider.ch-b .lbl { color: var(--ch-b); }
+.knob { margin-top: 6px; padding-top: 8px; border-top: 1px dashed var(--line); font-size: 13px; color: var(--muted);
+        display: flex; justify-content: space-between; gap: 8px; }
+.knob strong { color: var(--ink); font-variant-numeric: tabular-nums; }
+
+.routing.disabled .route-controls, .routing.disabled svg, .routing.disabled .presets { opacity: .4; pointer-events: none; }
+.note { color: var(--warn); font-weight: 600; }
+.route-controls { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.chsel { display: flex; gap: 6px; }
+.chsel button[aria-checked="true"].ch-a { background: var(--ch-a); color: #fff; border-color: var(--ch-a); }
+.chsel button[aria-checked="true"].ch-b { background: var(--ch-b); color: #fff; border-color: var(--ch-b); }
+.chsel b { font-variant-numeric: tabular-nums; }
+.rev.ch-a { color: var(--ch-a); border-color: var(--ch-a); }
+.rev.ch-b { color: var(--ch-b); border-color: var(--ch-b); }
+#diagram { width: 100%; height: auto; display: block; margin: 6px 0; touch-action: manipulation; }
+.hint { font-size: 13px; color: var(--muted); min-height: 1.4em; }
+.presets { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px; }
+.pads { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-top: 10px; }
+.padbtns { display: flex; gap: 6px; }
+.padbtns button { min-width: 40px; font-variant-numeric: tabular-nums; }
+.padbtns button[aria-pressed="true"] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+.padbtns button[aria-pressed="false"] { opacity: .55; text-decoration: line-through; }
+/* the FOC-Stim's electrode lead colours: 1 red, 2 blue, 3 yellow, 4 green */
+.padbtns button[data-pad="1"] { border-color: #d62828; }
+.padbtns button[data-pad="2"] { border-color: #1f6fe0; }
+.padbtns button[data-pad="3"] { border-color: #f2c200; }
+.padbtns button[data-pad="4"] { border-color: #2a9d3f; }
+.padbtns button[data-pad="1"][aria-pressed="true"] { background: #d62828; color: #fff; }
+.padbtns button[data-pad="2"][aria-pressed="true"] { background: #1f6fe0; color: #fff; }
+.padbtns button[data-pad="3"][aria-pressed="true"] { background: #f2c200; color: #1b1b1b; }
+.padbtns button[data-pad="4"][aria-pressed="true"] { background: #2a9d3f; color: #fff; }
+#blockedNote { font-size: 13px; min-height: 1.2em; margin-top: 4px; color: var(--danger); }
+.shape-row { margin-top: 10px; }
+.shapes { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 4px; }
+.shapes button[aria-checked="true"] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+.shape-row.disabled .shapes { opacity: .4; pointer-events: none; }
+.shapes .v7.disabled { opacity: .4; pointer-events: none; }   /* triangle / taper: fork v7 only */
+.shapes .taper { display: inline-flex; align-items: center; gap: 4px; font-size: 13px; }
+.shapes .taper input { width: 90px; }
+.fine { font-size: 12px; color: var(--muted); margin: 8px 0 0; }
+
+canvas { width: 100%; display: block; }
+canvas.glyph { height: 110px; }
+canvas.strip { height: 90px; margin-top: 6px; }
+.legend { font-size: 12px; color: var(--muted); margin-top: 4px; display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.sw { display: inline-block; width: 14px; height: 8px; border-radius: 2px; }
+.ch-a .sw.fill { background: color-mix(in srgb, var(--ch-a) 45%, transparent); }
+.ch-b .sw.fill { background: color-mix(in srgb, var(--ch-b) 45%, transparent); }
+.sw.line { height: 2px; background: var(--ink); }
+
+.advanced summary { cursor: pointer; font-weight: 700; }
+.advanced .row { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin: 10px 0; }
+.advanced .slider { grid-template-columns: 96px 1fr 44px; }
+
+@media (max-width: 520px) {
+  .top { padding: 8px 16px; }
+  .stop { min-width: 92px; padding: 10px 12px; }
+  .slider { grid-template-columns: 76px 1fr 46px; }
+  main { grid-template-columns: 1fr; }
+}
+.hotkeys { padding: 2px 16px; font-size: 12px; color: var(--muted); }
+.hotkeys b { color: var(--ink); font-weight: 600; }
+.hotkeys.flash::after { content: "  ▸ " attr(data-flash); color: var(--ink); font-weight: 700; }
+.check { display: block; margin: 6px 0; font-size: 13px; color: var(--muted); cursor: pointer; }
+
+/* ---- app nav (hub link) and the pop-out panel (Document Picture-in-Picture) ---- */
+.appnav { display: flex; gap: 14px; align-items: center; padding: 3px 16px; font-size: 12px;
+          background: var(--card); border-bottom: 1px solid var(--line); }
+.appnav a { color: var(--muted); text-decoration: none; font-weight: 600; }
+.appnav a:hover { color: var(--ink); }
+.appnav a[aria-current="page"] { color: var(--ink); }
+.appnav .spacer { flex: 1; }
+.appnav button { padding: 2px 10px; font-size: 12px; }
+
+body.pip-body { overflow: hidden; }
+.pip { display: flex; flex-direction: column; gap: 8px; padding: 10px 12px; }
+.pip .stop { width: 100%; min-width: 0; font-size: 22px; padding: 14px 10px; }
+.pip-row { display: flex; gap: 8px; align-items: center; }
+.pip-row .arm { flex: 0 0 auto; }
+.pip-state { font-weight: 800; letter-spacing: .03em; flex: 1; text-align: center; }
+.pip-state.running { color: var(--arm); }
+.pip-state.stopped { color: var(--muted); }
+.pip-dot { width: 12px; height: 12px; border-radius: 50%; background: var(--danger); flex: 0 0 auto; }
+.pip-dot.on { background: var(--ok); }
+.pip-pattern { font-size: 13px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pip-pattern b { color: var(--ink); }
+.pip .slider { grid-template-columns: 38px 1fr 46px; margin: 2px 0; }
+.pip-foot { font-size: 11px; color: var(--muted); }
+
+/* PlaStim wordmark (as on plastim.net: "PlaStim", Montserrat bold, accent #3C64F4) with a biphasic-pulse mark */
+.plastim { display: inline-flex; align-items: center; gap: 6px; text-decoration: none; color: var(--ink);
+  font-family: Montserrat, "Segoe UI", system-ui, sans-serif; font-weight: 800; letter-spacing: .2px; }
+.plastim .mark { width: 26px; height: 13px; color: #3C64F4; }
+.plastim .stim { color: #3C64F4; }
+.appnav .plastim { font-size: 14px; }
+.appnav .plastim .mark { width: 20px; height: 10px; }
+.appnav a.plastim { color: var(--ink); }   /* the nav links are muted; the wordmark is not */

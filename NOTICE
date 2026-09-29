@@ -1,0 +1,8 @@
+Required Notice: Copyright PlaStim (https://plastim.net)
+
+This software is licensed under the PolyForm Noncommercial License 1.0.0 (LICENSE.md).
+
+Third-party components keep their own licenses:
+- vendor/restim/: restim by diglet48, MIT License (vendor/restim/LICENSE). Reference and test oracle.
+- The ET-312's built-in mode programs are ErosTek's and are not included; the app reads them from the user's own
+  firmware file on the user's computer.

@@ -1,0 +1,138 @@
+import notifications_pb2 as _notifications_pb2
+import messages_pb2 as _messages_pb2
+import constants_pb2 as _constants_pb2
+from google.protobuf import descriptor as _descriptor
+from google.protobuf import message as _message
+from collections.abc import Mapping as _Mapping
+from typing import ClassVar as _ClassVar, Optional as _Optional, Union as _Union
+DESCRIPTOR: _descriptor.FileDescriptor
+
+class Notification(_message.Message):
+    __slots__ = ('notification_boot', 'notification_device_volume', 'notification_currents', 'notification_output_resistance', 'notification_skin_resistance', 'notification_system_stats', 'notification_signal_stats', 'notification_battery', 'notification_lsm6dsox', 'notification_pressure', 'notification_button_press', 'notification_debug_string', 'notification_debug_as5311', 'notification_debug_edging', 'notification_debug_teleplot', 'timestamp')
+    NOTIFICATION_BOOT_FIELD_NUMBER: _ClassVar[int]
+    NOTIFICATION_DEVICE_VOLUME_FIELD_NUMBER: _ClassVar[int]
+    NOTIFICATION_CURRENTS_FIELD_NUMBER: _ClassVar[int]
+    NOTIFICATION_OUTPUT_RESISTANCE_FIELD_NUMBER: _ClassVar[int]
+    NOTIFICATION_SKIN_RESISTANCE_FIELD_NUMBER: _ClassVar[int]
+    NOTIFICATION_SYSTEM_STATS_FIELD_NUMBER: _ClassVar[int]
+    NOTIFICATION_SIGNAL_STATS_FIELD_NUMBER: _ClassVar[int]
+    NOTIFICATION_BATTERY_FIELD_NUMBER: _ClassVar[int]
+    NOTIFICATION_LSM6DSOX_FIELD_NUMBER: _ClassVar[int]
+    NOTIFICATION_PRESSURE_FIELD_NUMBER: _ClassVar[int]
+    NOTIFICATION_BUTTON_PRESS_FIELD_NUMBER: _ClassVar[int]
+    NOTIFICATION_DEBUG_STRING_FIELD_NUMBER: _ClassVar[int]
+    NOTIFICATION_DEBUG_AS5311_FIELD_NUMBER: _ClassVar[int]
+    NOTIFICATION_DEBUG_EDGING_FIELD_NUMBER: _ClassVar[int]
+    NOTIFICATION_DEBUG_TELEPLOT_FIELD_NUMBER: _ClassVar[int]
+    TIMESTAMP_FIELD_NUMBER: _ClassVar[int]
+    notification_boot: _notifications_pb2.NotificationBoot
+    notification_device_volume: _notifications_pb2.NotificationDeviceVolume
+    notification_currents: _notifications_pb2.NotificationCurrents
+    notification_output_resistance: _notifications_pb2.NotificationOutputResistance
+    notification_skin_resistance: _notifications_pb2.NotificationSkinResistance
+    notification_system_stats: _notifications_pb2.NotificationSystemStats
+    notification_signal_stats: _notifications_pb2.NotificationSignalStats
+    notification_battery: _notifications_pb2.NotificationBattery
+    notification_lsm6dsox: _notifications_pb2.NotificationLSM6DSOX
+    notification_pressure: _notifications_pb2.NotificationPressure
+    notification_button_press: _notifications_pb2.NotificationButtonPress
+    notification_debug_string: _notifications_pb2.NotificationDebugString
+    notification_debug_as5311: _notifications_pb2.NotificationDebugAS5311
+    notification_debug_edging: _notifications_pb2.NotificationDebugEdging
+    notification_debug_teleplot: _notifications_pb2.NotificationDebugTeleplot
+    timestamp: int
+
+    def __init__(self, notification_boot: _Optional[_Union[_notifications_pb2.NotificationBoot, _Mapping]]=..., notification_device_volume: _Optional[_Union[_notifications_pb2.NotificationDeviceVolume, _Mapping]]=..., notification_currents: _Optional[_Union[_notifications_pb2.NotificationCurrents, _Mapping]]=..., notification_output_resistance: _Optional[_Union[_notifications_pb2.NotificationOutputResistance, _Mapping]]=..., notification_skin_resistance: _Optional[_Union[_notifications_pb2.NotificationSkinResistance, _Mapping]]=..., notification_system_stats: _Optional[_Union[_notifications_pb2.NotificationSystemStats, _Mapping]]=..., notification_signal_stats: _Optional[_Union[_notifications_pb2.NotificationSignalStats, _Mapping]]=..., notification_battery: _Optional[_Union[_notifications_pb2.NotificationBattery, _Mapping]]=..., notification_lsm6dsox: _Optional[_Union[_notifications_pb2.NotificationLSM6DSOX, _Mapping]]=..., notification_pressure: _Optional[_Union[_notifications_pb2.NotificationPressure, _Mapping]]=..., notification_button_press: _Optional[_Union[_notifications_pb2.NotificationButtonPress, _Mapping]]=..., notification_debug_string: _Optional[_Union[_notifications_pb2.NotificationDebugString, _Mapping]]=..., notification_debug_as5311: _Optional[_Union[_notifications_pb2.NotificationDebugAS5311, _Mapping]]=..., notification_debug_edging: _Optional[_Union[_notifications_pb2.NotificationDebugEdging, _Mapping]]=..., notification_debug_teleplot: _Optional[_Union[_notifications_pb2.NotificationDebugTeleplot, _Mapping]]=..., timestamp: _Optional[int]=...) -> None:
+        ...
+
+class Request(_message.Message):
+    __slots__ = ('id', 'request_firmware_version', 'request_capabilities_get', 'request_signal_start', 'request_signal_stop', 'request_axis_move_to', 'request_timestamp_set', 'request_timestamp_get', 'request_wifi_parameters_set', 'request_wifi_ip_get', 'request_lock_device_volume', 'request_lsm6dsox_start', 'request_lsm6dsox_stop', 'request_debug_stm32_deep_sleep', 'request_debug_enter_bootloader')
+    ID_FIELD_NUMBER: _ClassVar[int]
+    REQUEST_FIRMWARE_VERSION_FIELD_NUMBER: _ClassVar[int]
+    REQUEST_CAPABILITIES_GET_FIELD_NUMBER: _ClassVar[int]
+    REQUEST_SIGNAL_START_FIELD_NUMBER: _ClassVar[int]
+    REQUEST_SIGNAL_STOP_FIELD_NUMBER: _ClassVar[int]
+    REQUEST_AXIS_MOVE_TO_FIELD_NUMBER: _ClassVar[int]
+    REQUEST_TIMESTAMP_SET_FIELD_NUMBER: _ClassVar[int]
+    REQUEST_TIMESTAMP_GET_FIELD_NUMBER: _ClassVar[int]
+    REQUEST_WIFI_PARAMETERS_SET_FIELD_NUMBER: _ClassVar[int]
+    REQUEST_WIFI_IP_GET_FIELD_NUMBER: _ClassVar[int]
+    REQUEST_LOCK_DEVICE_VOLUME_FIELD_NUMBER: _ClassVar[int]
+    REQUEST_LSM6DSOX_START_FIELD_NUMBER: _ClassVar[int]
+    REQUEST_LSM6DSOX_STOP_FIELD_NUMBER: _ClassVar[int]
+    REQUEST_DEBUG_STM32_DEEP_SLEEP_FIELD_NUMBER: _ClassVar[int]
+    REQUEST_DEBUG_ENTER_BOOTLOADER_FIELD_NUMBER: _ClassVar[int]
+    id: int
+    request_firmware_version: _messages_pb2.RequestFirmwareVersion
+    request_capabilities_get: _messages_pb2.RequestCapabilitiesGet
+    request_signal_start: _messages_pb2.RequestSignalStart
+    request_signal_stop: _messages_pb2.RequestSignalStop
+    request_axis_move_to: _messages_pb2.RequestAxisMoveTo
+    request_timestamp_set: _messages_pb2.RequestTimestampSet
+    request_timestamp_get: _messages_pb2.RequestTimestampGet
+    request_wifi_parameters_set: _messages_pb2.RequestWifiParametersSet
+    request_wifi_ip_get: _messages_pb2.RequestWifiIPGet
+    request_lock_device_volume: _messages_pb2.RequestLockDeviceVolume
+    request_lsm6dsox_start: _messages_pb2.RequestLSM6DSOXStart
+    request_lsm6dsox_stop: _messages_pb2.RequestLSM6DSOXStop
+    request_debug_stm32_deep_sleep: _messages_pb2.RequestDebugStm32DeepSleep
+    request_debug_enter_bootloader: _messages_pb2.RequestDebugEnterBootloader
+
+    def __init__(self, id: _Optional[int]=..., request_firmware_version: _Optional[_Union[_messages_pb2.RequestFirmwareVersion, _Mapping]]=..., request_capabilities_get: _Optional[_Union[_messages_pb2.RequestCapabilitiesGet, _Mapping]]=..., request_signal_start: _Optional[_Union[_messages_pb2.RequestSignalStart, _Mapping]]=..., request_signal_stop: _Optional[_Union[_messages_pb2.RequestSignalStop, _Mapping]]=..., request_axis_move_to: _Optional[_Union[_messages_pb2.RequestAxisMoveTo, _Mapping]]=..., request_timestamp_set: _Optional[_Union[_messages_pb2.RequestTimestampSet, _Mapping]]=..., request_timestamp_get: _Optional[_Union[_messages_pb2.RequestTimestampGet, _Mapping]]=..., request_wifi_parameters_set: _Optional[_Union[_messages_pb2.RequestWifiParametersSet, _Mapping]]=..., request_wifi_ip_get: _Optional[_Union[_messages_pb2.RequestWifiIPGet, _Mapping]]=..., request_lock_device_volume: _Optional[_Union[_messages_pb2.RequestLockDeviceVolume, _Mapping]]=..., request_lsm6dsox_start: _Optional[_Union[_messages_pb2.RequestLSM6DSOXStart, _Mapping]]=..., request_lsm6dsox_stop: _Optional[_Union[_messages_pb2.RequestLSM6DSOXStop, _Mapping]]=..., request_debug_stm32_deep_sleep: _Optional[_Union[_messages_pb2.RequestDebugStm32DeepSleep, _Mapping]]=..., request_debug_enter_bootloader: _Optional[_Union[_messages_pb2.RequestDebugEnterBootloader, _Mapping]]=...) -> None:
+        ...
+
+class Response(_message.Message):
+    __slots__ = ('id', 'response_firmware_version', 'response_capabilities_get', 'response_signal_start', 'response_signal_stop', 'response_axis_move_to', 'response_timestamp_set', 'response_timestamp_get', 'response_wifi_parameters_set', 'response_wifi_ip_get', 'response_lock_device_volume', 'response_lsm6dsox_start', 'response_lsm6dsox_stop', 'response_debug_stm32_deep_sleep', 'error')
+    ID_FIELD_NUMBER: _ClassVar[int]
+    RESPONSE_FIRMWARE_VERSION_FIELD_NUMBER: _ClassVar[int]
+    RESPONSE_CAPABILITIES_GET_FIELD_NUMBER: _ClassVar[int]
+    RESPONSE_SIGNAL_START_FIELD_NUMBER: _ClassVar[int]
+    RESPONSE_SIGNAL_STOP_FIELD_NUMBER: _ClassVar[int]
+    RESPONSE_AXIS_MOVE_TO_FIELD_NUMBER: _ClassVar[int]
+    RESPONSE_TIMESTAMP_SET_FIELD_NUMBER: _ClassVar[int]
+    RESPONSE_TIMESTAMP_GET_FIELD_NUMBER: _ClassVar[int]
+    RESPONSE_WIFI_PARAMETERS_SET_FIELD_NUMBER: _ClassVar[int]
+    RESPONSE_WIFI_IP_GET_FIELD_NUMBER: _ClassVar[int]
+    RESPONSE_LOCK_DEVICE_VOLUME_FIELD_NUMBER: _ClassVar[int]
+    RESPONSE_LSM6DSOX_START_FIELD_NUMBER: _ClassVar[int]
+    RESPONSE_LSM6DSOX_STOP_FIELD_NUMBER: _ClassVar[int]
+    RESPONSE_DEBUG_STM32_DEEP_SLEEP_FIELD_NUMBER: _ClassVar[int]
+    ERROR_FIELD_NUMBER: _ClassVar[int]
+    id: int
+    response_firmware_version: _messages_pb2.ResponseFirmwareVersion
+    response_capabilities_get: _messages_pb2.ResponseCapabilitiesGet
+    response_signal_start: _messages_pb2.ResponseSignalStart
+    response_signal_stop: _messages_pb2.ResponseSignalStop
+    response_axis_move_to: _messages_pb2.ResponseAxisMoveTo
+    response_timestamp_set: _messages_pb2.ResponseTimestampSet
+    response_timestamp_get: _messages_pb2.ResponseTimestampGet
+    response_wifi_parameters_set: _messages_pb2.ResponseWifiParametersSet
+    response_wifi_ip_get: _messages_pb2.ResponseWifiIPGet
+    response_lock_device_volume: _messages_pb2.ResponseLockDeviceVolume
+    response_lsm6dsox_start: _messages_pb2.ResponseLSM6DSOXStart
+    response_lsm6dsox_stop: _messages_pb2.ResponseLSM6DSOXStop
+    response_debug_stm32_deep_sleep: _messages_pb2.ResponseDebugStm32DeepSleep
+    error: Error
+
+    def __init__(self, id: _Optional[int]=..., response_firmware_version: _Optional[_Union[_messages_pb2.ResponseFirmwareVersion, _Mapping]]=..., response_capabilities_get: _Optional[_Union[_messages_pb2.ResponseCapabilitiesGet, _Mapping]]=..., response_signal_start: _Optional[_Union[_messages_pb2.ResponseSignalStart, _Mapping]]=..., response_signal_stop: _Optional[_Union[_messages_pb2.ResponseSignalStop, _Mapping]]=..., response_axis_move_to: _Optional[_Union[_messages_pb2.ResponseAxisMoveTo, _Mapping]]=..., response_timestamp_set: _Optional[_Union[_messages_pb2.ResponseTimestampSet, _Mapping]]=..., response_timestamp_get: _Optional[_Union[_messages_pb2.ResponseTimestampGet, _Mapping]]=..., response_wifi_parameters_set: _Optional[_Union[_messages_pb2.ResponseWifiParametersSet, _Mapping]]=..., response_wifi_ip_get: _Optional[_Union[_messages_pb2.ResponseWifiIPGet, _Mapping]]=..., response_lock_device_volume: _Optional[_Union[_messages_pb2.ResponseLockDeviceVolume, _Mapping]]=..., response_lsm6dsox_start: _Optional[_Union[_messages_pb2.ResponseLSM6DSOXStart, _Mapping]]=..., response_lsm6dsox_stop: _Optional[_Union[_messages_pb2.ResponseLSM6DSOXStop, _Mapping]]=..., response_debug_stm32_deep_sleep: _Optional[_Union[_messages_pb2.ResponseDebugStm32DeepSleep, _Mapping]]=..., error: _Optional[_Union[Error, _Mapping]]=...) -> None:
+        ...
+
+class Error(_message.Message):
+    __slots__ = ('code',)
+    CODE_FIELD_NUMBER: _ClassVar[int]
+    code: _constants_pb2.Errors
+
+    def __init__(self, code: _Optional[_Union[_constants_pb2.Errors, str]]=...) -> None:
+        ...
+
+class RpcMessage(_message.Message):
+    __slots__ = ('request', 'response', 'notification')
+    REQUEST_FIELD_NUMBER: _ClassVar[int]
+    RESPONSE_FIELD_NUMBER: _ClassVar[int]
+    NOTIFICATION_FIELD_NUMBER: _ClassVar[int]
+    request: Request
+    response: Response
+    notification: Notification
+
+    def __init__(self, request: _Optional[_Union[Request, _Mapping]]=..., response: _Optional[_Union[Response, _Mapping]]=..., notification: _Optional[_Union[Notification, _Mapping]]=...) -> None:
+        ...

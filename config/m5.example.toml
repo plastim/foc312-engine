@@ -1,0 +1,30 @@
+# The M5 remote's Wi-Fi and boxes. Copy to config/m5.toml (gitignored: it holds the Wi-Fi password), then
+#   py -3.13 -m stimengine.remote load --port COMx
+# Caps and safety timings are NOT set here: they come from config/engine.toml, same as the engine.
+
+[wifi]
+ssid = "your-network"
+password = "your-password"
+
+# Optional: the remote runs its own network and the boxes join it - one hop through the air, no house access point
+# in between (a busy 2.4 GHz house AP made the round trip 100 ms+ with 1 s spikes). Point each box at it once over
+# USB:  py -3.13 -m stimengine.remote pair-box --box-port COMy     (--house puts it back on [wifi])
+# The box gives up after two retries if the network is missing: switch the remote on first.
+# [direct]
+# enabled = true
+# ssid = "stim-remote"
+# password = "8-63 characters"
+# channel = 6
+
+# Every FOC-Stim the remote can drive (the box's TCP server). Pick one in the remote's options. host is its address
+# on the house network; mac (its Wi-Fi MAC) finds it on the remote's own network.
+[[box]]
+name = "box 1"
+host = "10.0.0.50"
+port = 55533
+
+[[box]]
+name = "box 2"
+host = "10.0.0.51"
+mac = "aa:bb:cc:dd:ee:ff"
+port = 55533

@@ -1,0 +1,353 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PlaStim</title>
+<link rel="stylesheet" href="/static/hub.css">
+</head>
+<body>
+<header class="top">
+  <div class="brand"><a class="plastim" href="http://127.0.0.1:8320/" aria-label="PlaStim" title="PlaStim"><svg class="mark" viewBox="0 0 28 14" aria-hidden="true"><polyline points="1,7 6,7 6,2 12,2 12,12 18,12 18,7 27,7" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/></svg><span class="word">Pla<span class="stim">Stim</span></span></a> <span id="enginePill" class="pill off" title="the engine process that drives a box">engine off</span></div>
+  <nav class="tabs" role="tablist" aria-label="Sections">
+    <button role="tab" id="tab-play" aria-controls="panel-play" data-tab="play">Play</button>
+    <button role="tab" id="tab-boxes" aria-controls="panel-boxes" data-tab="boxes">Boxes</button>
+    <button role="tab" id="tab-remote" aria-controls="panel-remote" data-tab="remote">M5 remote</button>
+    <button role="tab" id="tab-settings" aria-controls="panel-settings" data-tab="settings">Settings</button>
+  </nav>
+  <div class="safety">
+    <button id="hubStop" class="stop" title="STOP the running engine's output (same as the player's STOP)" disabled>STOP</button>
+  </div>
+</header>
+<div id="error" class="error" hidden></div>
+
+<main>
+  <!-- ------------------------------------------------------------------ Play -->
+  <section class="panel" id="panel-play" role="tabpanel" aria-labelledby="tab-play">
+    <div class="card welcome">
+      <div class="plastim big" aria-label="PlaStim"><svg class="mark" viewBox="0 0 28 14" aria-hidden="true"><polyline points="1,7 6,7 6,2 12,2 12,12 18,12 18,7 27,7" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/></svg><span class="word">Pla<span class="stim">Stim</span></span></div>
+      <p class="tagline">Control for FOC-Stim boxes: ET-312 patterns on two independent channels, from this computer or
+        the M5 remote.</p>
+    </div>
+
+    <div class="card">
+      <h2>Getting started</h2>
+      <ol class="steps">
+        <li id="stepPlug"><span class="tick" aria-hidden="true"></span><div>
+          <b>Plug your FOC-Stim into this computer with USB</b> and switch it on. Use a data cable: a charge-only cable
+          shows nothing. <button id="detectHere">Detect</button>
+          <div class="stepstate" id="stepPlugState"></div></div></li>
+        <li id="stepFw"><span class="tick" aria-hidden="true"></span><div>
+          <b>Check its firmware.</b> The box needs the PlaStim firmware (v7 or later) for two channels and the pulse
+          shapes. If it shows <i>stock</i>, flash it on the <a href="#boxes" data-goto="boxes">Boxes</a> tab (switch
+          the M5 remote off and take the electrodes off first).
+          <div class="stepstate" id="stepFwState"></div></div></li>
+        <li id="stepConnect"><span class="tick" aria-hidden="true"></span><div>
+          <b>Connect</b> this computer's engine to the box.
+          <div class="stepstate" id="quickBoxes">Looking for boxes…</div></div></li>
+        <li id="stepPlay"><span class="tick" aria-hidden="true"></span><div>
+          <b>Open the player</b> and play:
+          <ol class="sub">
+            <li>Pick a pattern (<i>Waves</i> or <i>Stroke</i> are good first ones).</li>
+            <li>Turn the box's own knob low: it is the master limit on everything this app sends.</li>
+            <li>Put the electrodes on, then press <b>ARM</b>: the output ramps up slowly from zero.</li>
+            <li>Raise <b>Level A</b> and <b>Level B</b> a little at a time. <b>MA</b> changes the pattern's speed and
+              feel, not its strength.</li>
+            <li><b>STOP</b> at any time: the red button, <b>Space</b> in the player, or <b>Pause</b> anywhere on this
+              computer.</li>
+          </ol>
+          <div class="stepstate"><a id="openPlayer2" class="big-link small disabled" href="http://127.0.0.1:8322/"
+            target="_blank" rel="noopener">Open player</a></div></div></li>
+        <li id="stepMore"><span class="tick" aria-hidden="true"></span><div>
+          <b>Optional.</b> <b>Pop out</b> in the player's top bar keeps a small always-on-top window with STOP and the
+          levels. The <a href="#remote" data-goto="remote">M5 remote</a> plays the same patterns without this computer.
+        </div></li>
+      </ol>
+    </div>
+
+    <div class="card safety-card">
+      <h2>Safety first</h2>
+      <ul>
+        <li>Never place electrodes on or across the chest, head or neck; keep the current path below the waist.</li>
+        <li>Do not use with a pacemaker or other implanted electronics, a heart condition, epilepsy, or when pregnant.</li>
+        <li>Start with everything at zero and increase slowly. Stop at any pain or discomfort.</li>
+        <li>Never while driving, operating machinery, asleep, or in water.</li>
+        <li>If the box stops by itself (a safety trip), switch it off and on again and start from zero.</li>
+      </ul>
+    </div>
+
+    <div class="card hero">
+      <div>
+        <h2>Player</h2>
+        <p id="playStatus" class="muted">The engine is not running. Connect it to a box on the Boxes tab.</p>
+      </div>
+      <a id="openPlayer" class="big-link disabled" href="http://127.0.0.1:8322/" target="_blank" rel="noopener">Open player</a>
+    </div>
+    <div class="card" id="statusCard">
+      <h2>Status <small id="engineWhere" class="muted"></small></h2>
+      <p id="statusOff" class="muted">The engine is off: connect a box (step 3 above) to see what it is doing.</p>
+      <div id="tripPanel" class="trip" hidden>
+        <h3>The box stopped itself (a safety trip) <small id="tripWhen"></small></h3>
+        <p>Switch the box off and on again, connect again, and start from zero. The box's own report:</p>
+        <pre id="tripLines" class="log"></pre>
+      </div>
+      <ul id="statusWarnings" class="warnings"></ul>
+      <div id="statusGrid" class="statgrid"></div>
+      <details class="also">
+        <summary>Engine log</summary>
+        <pre id="engineLog" class="log">—</pre>
+      </details>
+    </div>
+    <p class="fine">The player opens in its own tab: its <b>Pop out</b> button makes a small always-on-top window with STOP,
+      levels and MA (Chrome / Edge). System-wide hotkeys work even when another window has focus (Settings).</p>
+    <footer class="brandfoot">
+      <span class="plastim small"><svg class="mark" viewBox="0 0 28 14" aria-hidden="true"><polyline points="1,7 6,7 6,2 12,2 12,12 18,12 18,7 27,7" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/></svg><span class="word">Pla<span class="stim">Stim</span></span></span>
+      <a href="https://www.patreon.com/plastim" target="_blank" rel="noopener">Patreon</a>
+      <span class="sep" aria-hidden="true">·</span>
+      <a href="https://plastim.net/" target="_blank" rel="noopener">Store</a>
+    </footer>
+  </section>
+
+  <!-- ------------------------------------------------------------------ Boxes -->
+  <section class="panel" id="panel-boxes" role="tabpanel" aria-labelledby="tab-boxes" hidden>
+    <div class="card">
+      <h2>Devices on USB
+        <span class="grow"></span>
+        <button id="identify" class="primary" title="Ask each USB device what it is (opens each free port briefly)">Detect</button>
+      </h2>
+      <table class="devices">
+        <thead><tr><th>Device</th><th>Firmware / details</th><th>Port</th><th>Status</th><th></th></tr></thead>
+        <tbody id="deviceRows"><tr><td colspan="5" class="muted">Looking…</td></tr></tbody>
+      </table>
+      <p class="fine">FOC-Stim boxes and the M5 remote use the same USB chip, so a new device shows as <i>unknown</i>
+        until detected. Detect asks each device the engine isn't using what it is; the answer is remembered.</p>
+    </div>
+
+    <div class="card" id="boxFlashCard">
+      <h2>Box firmware</h2>
+      <div class="form">
+        <label>Box <select id="boxPort"></select></label>
+        <label>Image <select id="boxImage"></select></label>
+      </div>
+      <div id="boxImageInfo" class="imginfo muted"></div>
+      <div class="updates" id="boxUpdates">
+        <div class="uphead">
+          <b>Updates</b> <span class="muted" id="boxUpChecked">not checked yet</span>
+          <span class="grow"></span>
+          <button id="boxUpCheck">Check for updates</button>
+        </div>
+        <div id="boxUpList" class="uplist"></div>
+        <label class="check small" id="boxUpOlderRow" hidden><input type="checkbox" id="boxUpOlder"> Show older versions</label>
+        <p class="fine">Releases are signed by PlaStim; the app refuses anything else. Downloading only adds the image to
+          the list above: nothing is flashed until you choose it and confirm.</p>
+      </div>
+      <label class="check required"><input type="checkbox" id="remoteOff">
+        The M5 remote is switched off or out of range (its Wi-Fi traffic can corrupt a flash)</label>
+      <div class="actions">
+        <button id="boxFlashBtn" class="primary">Flash…</button>
+        <span id="boxFlashWhy" class="muted"></span>
+      </div>
+      <div id="boxConfirm" class="confirm" hidden>
+        <p id="boxConfirmText"></p>
+        <div class="actions">
+          <button id="boxFlashGo" class="danger">Flash now</button>
+          <button id="boxFlashCancel">Cancel</button>
+        </div>
+      </div>
+      <div class="job" id="boxJob" hidden>
+        <div class="jobhead"><span class="jobstate" id="boxJobState"></span> <span id="boxJobTitle"></span></div>
+        <pre class="log" id="boxJobLog"></pre>
+      </div>
+      <details class="recover">
+        <summary>If a flash fails</summary>
+        <p>A failed flash leaves the box in its built-in bootloader, which lives in read-only memory: the box can always
+          be flashed again. If it no longer answers at all, switch it off, <b>hold the STM32 boot button while switching
+          it on</b>, then flash again (the flasher finds the bootloader already active). Switch the remote off first.
+          Keep a known-good image to go back to.</p>
+      </details>
+    </div>
+  </section>
+
+  <!-- ------------------------------------------------------------------ Remote -->
+  <section class="panel" id="panel-remote" role="tabpanel" aria-labelledby="tab-remote" hidden>
+    <div class="card">
+      <h2>M5 remote</h2>
+      <div class="form">
+        <label>M5 remote on <select id="remotePort"></select></label>
+      </div>
+      <p class="fine">Plug the M5 remote in with USB. Loading and flashing need it <b>STOPPED</b> (not playing): it
+        refuses while a session runs.</p>
+    </div>
+
+    <div class="card" id="m5SettingsCard">
+      <h2>Settings the M5 remote gets <small id="m5SetState" class="muted"></small></h2>
+      <div class="form">
+        <label>The remote and the boxes talk over
+          <select id="m5Mode">
+            <option value="direct">the remote's own Wi-Fi network (recommended)</option>
+            <option value="house">the house Wi-Fi</option>
+          </select></label>
+      </div>
+      <p class="fine" id="m5ModeNote"></p>
+      <fieldset class="group" id="m5DirectBox">
+        <legend>The remote's own network</legend>
+        <div class="form">
+          <label>Network name <input id="m5DirSsid" maxlength="32" autocomplete="off"></label>
+          <label>Password (8-63 characters) <input id="m5DirPw" type="password" maxlength="63" autocomplete="new-password"></label>
+          <label>Channel <select id="m5DirCh"><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option><option value="7">7</option><option value="8">8</option><option value="9">9</option><option value="10">10</option><option value="11">11</option></select></label>
+        </div>
+      </fieldset>
+      <fieldset class="group">
+        <legend>House Wi-Fi <small class="muted">(used in house mode, and by "Back to house Wi-Fi" below)</small></legend>
+        <div class="form">
+          <label>Network name <input id="m5HouseSsid" maxlength="32" autocomplete="off"></label>
+          <label>Password <input id="m5HousePw" type="password" maxlength="63" autocomplete="new-password"></label>
+        </div>
+      </fieldset>
+      <h3>Boxes the remote can drive</h3>
+      <table class="devices boxes-edit">
+        <thead><tr><th>Name</th><th>Wi-Fi MAC <small class="muted">(its USB serial)</small></th><th>House address</th><th></th></tr></thead>
+        <tbody id="m5Boxes"></tbody>
+      </table>
+      <div class="actions"><button id="m5AddBox">Add a box</button> <span id="m5AddDetected"></span></div>
+      <details class="also">
+        <summary>Also sent: limits set on this PC (the remote enforces them)</summary>
+        <div id="m5Safety" class="statgrid"></div>
+      </details>
+      <div class="actions">
+        <button id="m5Save" class="primary">Save settings</button>
+        <span id="m5SaveMsg" class="muted"></span>
+      </div>
+      <p class="fine">Saved on this computer only (passwords never leave it except to the remote). The remote gets them with
+        the next <b>Load patterns &amp; settings</b>.</p>
+    </div>
+
+    <div class="card">
+      <h2>Patterns &amp; settings</h2>
+      <p class="muted">Builds the pattern pack from the files below and the settings above, and loads both onto the
+        M5 remote.</p>
+      <div class="actions"><button id="remoteLoad" class="primary">Load patterns &amp; settings</button></div>
+      <p class="fine" id="m5LastLoad"></p>
+      <div class="job" id="loadJob" hidden>
+        <div class="jobhead"><span class="jobstate" id="loadJobState"></span> <span id="loadJobTitle"></span></div>
+        <pre class="log" id="loadJobLog"></pre>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Pattern files <small id="patTotal" class="muted"></small></h2>
+      <table class="devices">
+        <thead><tr><th>Group</th><th>Patterns</th><th>Where they come from</th></tr></thead>
+        <tbody id="patRows"><tr><td colspan="3" class="muted">Reading the pattern files…</td></tr></tbody>
+      </table>
+      <p class="fine">Every Load builds the pack from these again, so a new file is on the remote after the next Load.
+        The remote has room for many more patterns than this.</p>
+      <details class="also" id="patNotesBox" hidden><summary>Files left out</summary><ul id="patNotes"></ul></details>
+      <details class="also">
+        <summary>Getting ErosLink's own routines</summary>
+        <p class="muted">The ErosLink and ErosLink examples groups are the routines ErosTek shipped with ErosLink. They
+          are read from ErosLink's own installer (the <i>ErosLink_Installer.zip</i> download) into a folder on this
+          computer, once:</p>
+        <pre class="cmd">py -3.13 -m stimengine.et312.eroslink_cache --zip ErosLink_Installer.zip</pre>
+        <p class="fine">Folder: <span id="patCache" class="mono"></span></p>
+      </details>
+    </div>
+
+    <div class="card" id="et312Card">
+      <h2>ET-312 built-in modes <small id="et312State" class="muted"></small></h2>
+      <p class="muted">The ET-312's own 18 modes (Waves, Stroke, Climb, ...) are programs inside ErosTek's firmware, so
+        they are not included here. If you own an ET-312, you can extract them from its firmware; they stay on this
+        computer.</p>
+      <ol class="howto">
+        <li>Get your ET-312B's firmware as a <b>decrypted v1.6 image</b> (a <i>.bin</i>, or an Intel <i>.hex</i>). The
+          buttshock project's tools can download it from your own box
+          (<span class="mono">scripts/fw-utils.py --downloadfw</span>).</li>
+        <li>Choose the file and press Extract. Only the mode programs are kept, in
+          <span class="mono" id="et312File"></span>; the image itself is not stored.</li>
+        <li>Press <b>Load patterns &amp; settings</b> to put the modes on the M5 remote. The player shows them after the
+          engine is started again (disconnect and connect the box).</li>
+      </ol>
+      <div class="actions">
+        <input type="file" id="et312Image" accept=".bin,.hex">
+        <button id="et312Extract" class="primary" disabled>Extract</button>
+        <span id="et312Msg" class="muted"></span>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Box Wi-Fi</h2>
+      <p class="muted">Point a box at the remote's own Wi-Fi (one hop, no house access point in between), or back at the
+        house Wi-Fi. Done over the box's USB; the box never starts its output for this. Switch the remote on first:
+        the box gives up on a network after two tries.</p>
+      <div class="form">
+        <label>Box <select id="pairPort"></select></label>
+      </div>
+      <div class="actions">
+        <button id="pairRemote" class="primary">Join the remote's Wi-Fi</button>
+        <button id="pairHouse">Back to house Wi-Fi</button>
+      </div>
+      <div class="job" id="pairJob" hidden>
+        <div class="jobhead"><span class="jobstate" id="pairJobState"></span> <span id="pairJobTitle"></span></div>
+        <pre class="log" id="pairJobLog"></pre>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>M5 remote firmware</h2>
+      <div class="form">
+        <label>Image <select id="remoteImage"></select></label>
+      </div>
+      <div id="remoteImageInfo" class="imginfo muted"></div>
+      <div class="updates" id="remoteUpdates">
+        <div class="uphead">
+          <b>Updates</b> <span class="muted" id="remoteUpChecked">not checked yet</span>
+          <span class="grow"></span>
+          <button id="remoteUpCheck">Check for updates</button>
+        </div>
+        <div id="remoteUpList" class="uplist"></div>
+        <label class="check small" id="remoteUpOlderRow" hidden><input type="checkbox" id="remoteUpOlder"> Show older versions</label>
+        <p class="fine">Releases are signed by PlaStim; the app refuses anything else. Downloading only adds the image to
+          the list above: nothing is flashed until you choose it and confirm.</p>
+      </div>
+      <div class="actions">
+        <button id="remoteFlashBtn" class="primary">Flash…</button>
+        <span id="remoteFlashWhy" class="muted"></span>
+      </div>
+      <div id="remoteConfirm" class="confirm" hidden>
+        <p id="remoteConfirmText"></p>
+        <div class="actions">
+          <button id="remoteFlashGo" class="danger">Flash now</button>
+          <button id="remoteFlashCancel">Cancel</button>
+        </div>
+      </div>
+      <div class="job" id="remoteJob" hidden>
+        <div class="jobhead"><span class="jobstate" id="remoteJobState"></span> <span id="remoteJobTitle"></span></div>
+        <pre class="log" id="remoteJobLog"></pre>
+      </div>
+      <p class="fine">Patterns and settings are kept across a firmware flash. If the remote's screen stays black after
+        a flash, press its reset button once.</p>
+    </div>
+  </section>
+
+  <!-- ------------------------------------------------------------------ Settings -->
+  <section class="panel" id="panel-settings" role="tabpanel" aria-labelledby="tab-settings" hidden>
+    <div class="card">
+      <h2>System-wide hotkeys <small id="hotkeyState" class="muted"></small></h2>
+      <table class="devices">
+        <thead><tr><th>Keys</th><th>Action</th><th>Status</th></tr></thead>
+        <tbody id="hotkeyRows"><tr><td colspan="3" class="muted">—</td></tr></tbody>
+      </table>
+      <p class="fine" id="hotkeyNote">These work while another window has focus (a video player, Stash). Level keys
+        step both ways; the up keys give one step per press (holding does not keep raising). The player page has its own
+        keys while it has focus: Space / Esc STOP, Q/A W/S E/D R/F.</p>
+    </div>
+    <div class="card">
+      <h2>About</h2>
+      <p class="muted">Hub on this port; the player on :8322 while the engine runs; the engine's control API on :8321.
+        Everything stays on this computer.</p>
+    </div>
+  </section>
+</main>
+<script src="/static/hub.js"></script>
+</body>
+</html>
