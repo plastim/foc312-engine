@@ -117,8 +117,8 @@ def _armed_remote(lib, level=40):
     r = Remote(lib)
     r.link()
     r.pick(0)
+    r.knob(K2, level)
     r.knob(K3, level)
-    r.knob(K4, level)
     r.run(level / 10 + 0.5)                   # levels rise at 10 steps/s
     r.button()
     return r
@@ -148,13 +148,13 @@ def test_stop_always_wins_and_never_toggles_back_on(lib):
 
 def test_levels_rise_at_most_10_steps_a_second_and_fall_at_once(lib):
     r = Remote(lib)
-    r.knob(K3, 60)                        # a fast spin
+    r.knob(K2, 60)                        # a fast spin
     assert r.d.rc_level_target(0) == 60 and r.d.rc_level(0) == 0
     r.run(1.0)
     assert 9 <= r.d.rc_level(0) <= 11
     r.run(6.0)
     assert r.d.rc_level(0) == 60
-    r.knob(K3, -45)
+    r.knob(K2, -45)
     assert r.d.rc_level(0) == 15              # down: instant, before the next tick
     r.knob(K1, -80)
     assert r.d.rc_master() == 20
@@ -165,8 +165,8 @@ def test_levels_rise_at_most_10_steps_a_second_and_fall_at_once(lib):
 
 def test_levels_stay_with_the_wires_through_a_swap(lib):
     r = Remote(lib)
-    r.knob(K3, 50)
-    r.knob(K4, 20)
+    r.knob(K2, 50)
+    r.knob(K3, 20)
     r.run(6.0)
     assert (r.d.rc_foc_level(0), r.d.rc_foc_level(1)) == (0.5, 0.2)
     assert (r.d.rc_foc_route(0), r.d.rc_foc_route(1)) == (12, 34)
@@ -196,10 +196,10 @@ def test_a_fault_stops_and_zeroes_the_levels(lib):
 
 
 def test_in_the_menus_no_knob_touches_the_output(lib):
-    """Run screen: 1 master, 2 MA, 3-4 levels. Menus: the knobs are the menu's; master, MA and levels hold."""
+    """Run screen: 1 master, 2 level A, 3 level B, 4 MA. Menus: the knobs are the menu's; master, MA and levels hold."""
     r = Remote(lib)
-    r.knob(K3, 30)
-    r.knob(K4, 20)
+    r.knob(K2, 30)
+    r.knob(K3, 20)
     ma, master = r.d.rc_ma(), r.d.rc_master()
     r.push1()                                  # patterns: 1 scrolls, 2 jumps ten, 3-4 do nothing
     assert r.d.rc_screen() == PATTERNS
@@ -210,20 +210,20 @@ def test_in_the_menus_no_knob_touches_the_output(lib):
     r.knob(K3, -30)
     r.knob(K4, 50)
     r.push4()                                  # back
-    r.push4()                                  # options: 1 moves (press toggles), 2 cycles the pulse shape
+    r.push4()                                  # options: 1 moves (press toggles), 4 cycles the pulse shape
     assert r.d.rc_screen() == OPTIONS
     r.knob(K1, OPT_SWAP)
     r.push1()
     assert r.d.rc_cursor() == OPT_SWAP and r.d.rc_option(OPT_SWAP).decode() == "Swap channels: on"
-    r.knob(K2, 1)                              # from anywhere: the shape changes and the highlight moves to it
+    r.knob(K4, 1)                              # from anywhere: the shape changes and the highlight moves to it
     assert r.d.rc_cursor() == OPT_SHAPE and r.d.rc_option(OPT_SHAPE).decode() == "Shape: soft square"
     assert (r.d.rc_ma(), r.d.rc_master()) == (ma, master)
     assert (r.d.rc_level_target(0), r.d.rc_level_target(1)) == (30, 20)
     r.push4()
     assert r.d.rc_screen() == RUN
     r.knob(K1, -10)
-    r.knob(K2, 4)
-    r.knob(K3, -5)
+    r.knob(K4, 4)
+    r.knob(K2, -5)
     assert (r.d.rc_master(), r.d.rc_ma(), r.d.rc_level_target(0)) == (master - 10, ma + 4, 25)
 
 
@@ -242,17 +242,17 @@ def test_options_polarity_wires_and_text(lib):
     assert r.d.rc_wire(1) == 23 and r.d.rc_option(OPT_WIRES2).decode() == "Wires 2: 2-3"
 
 
-def test_knobs_3_and_4_step_their_wires_through_every_pair_both_ways(lib):
+def test_knobs_2_and_3_step_their_wires_through_every_pair_both_ways(lib):
     r = Remote(lib)
     r.push4()
     seen = []
     for _ in range(12):
-        r.knob(K3, 1)
+        r.knob(K2, 1)
         r.run(0.02)
         seen.append(r.d.rc_foc_route(0))
     assert seen == [21, 34, 43, 23, 32, 41, 14, 13, 31, 24, 42, 12]
     assert r.d.rc_cursor() == OPT_WIRES1       # the picture highlights what is changing
-    r.knob(K4, -1)                             # position 2, backwards from 34: 21
+    r.knob(K3, -1)                             # position 2, backwards from 34: 21
     assert r.d.rc_foc_route(1) == 21 and r.d.rc_cursor() == OPT_WIRES2
     assert r.d.rc_option(OPT_POL2).decode() == "Polarity 2: reversed"
 
@@ -294,7 +294,7 @@ def test_damaged_saved_settings_fall_back_to_safe_defaults(lib):
 
 
 def test_shapes_follow_the_box_firmware(lib):
-    """Knob 2 on Shape: triangle, rounded, taper 10..80 %, soft square; the v7 ones only with a v7 box, and an
+    """Knob 4 in the options: triangle, rounded, taper 10..80 %, soft square; the v7 ones only with a v7 box, and an
     older box is sent rounded for a v7 shape it would misplay. The charge factors match device/fork.py."""
     from stimengine.device import fork as F
     lib.rc_set_fork.argtypes = [ctypes.c_int, ctypes.c_double]
@@ -308,21 +308,21 @@ def test_shapes_follow_the_box_firmware(lib):
     r.d.rc_set_fork(6, r.t)
     seen = []
     for _ in range(4):
-        r.knob(K2, 1)
+        r.knob(K4, 1)
         seen.append(r.d.rc_shape())
     assert seen == [2, 0, 2, 0]                      # v6: rounded <-> soft square, round the list
     r.d.rc_set_fork(7, r.t)
     seen = []
     for _ in range(11):
-        r.knob(K2, 1)
+        r.knob(K4, 1)
         seen.append(r.d.rc_shape())
     assert seen == [41, 42, 43, 44, 45, 46, 47, 48, 2, 3, 0]   # ... soft square, then round to triangle, rounded
-    r.knob(K2, -1)
+    r.knob(K4, -1)
     assert r.d.rc_shape() == 3 and r.d.rc_option(OPT_SHAPE).decode() == "Shape: triangle"
-    r.knob(K2, -1)                                   # backwards round the end too
+    r.knob(K4, -1)                                   # backwards round the end too
     assert r.d.rc_option(OPT_SHAPE).decode() == "Shape: soft square"
-    r.knob(K2, 1)
-    r.knob(K2, 3)                                    # a quick turn: one step per detent
+    r.knob(K4, 1)
+    r.knob(K4, 3)                                    # a quick turn: one step per detent
     assert r.d.rc_option(OPT_SHAPE).decode() == "Shape: taper 20%"
     r.run(0.2)
     assert r.d.rc_shape_sent(0) == 42                # a v7 box gets the taper

@@ -49,6 +49,7 @@ logger = logging.getLogger("engine.foc312")
 
 DEFAULT_ELK_DIR = ""          # your own .elk folder: [et312] elk_dir in config/engine.toml (none by default)
 OUTPUTS = ("preview", "stock", "fork")
+MEASURED_STALE_S = 1.5          # a measured current older than this shows as unknown
 LOOP_S = 0.02                 # wake every 20 ms, run the ticks that are due (244 Hz / 50 Hz ~ 5 per wake)
 HIST_S = 10.0
 HIST_DT = 0.05                # 20 Hz history samples -> 200 per 10 s strip
@@ -626,6 +627,11 @@ class Foc312Runner:
               "fork_firmware": bool(e.fork_firmware), "fork_version": int(getattr(e, "fork_version", 0) or 0),
               "firmware": e.client.telemetry.firmware,
               "amps_cap": e.safety.amps_cap}
+        # what each channel's wires actually get: the box's measured peak, the smaller of the route's two electrodes
+        # (on a shared electrode the other one is this channel's alone), as the M5 remote shows it; None when stale
+        t = e.client.telemetry
+        fresh = t.peak is not None and t.currents_at is not None and time.monotonic() - t.currents_at < MEASURED_STALE_S
+        st["measured"] = ([min(t.peak[r // 10 - 1], t.peak[r % 10 - 1]) for r in self.routes] if fresh else [None, None])
         if e.mode == "biphasic":
             st["amps"] = [e.last_values.get(a) for a in F.AMP_AXES]
         else:

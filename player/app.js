@@ -102,8 +102,11 @@ function onState(s, full) {
     parts.push(`master <b>${pct(eng.master)}</b>`);
     if (eng.deadman_active) parts.push(`<span class="warn">deadman ${pct(eng.deadman_scale)}</span>`);
     if (eng.faulted) parts.push(`<span class="bad">FAULT: ${eng.fault_reason}</span>`);
-    const amps = (eng.amps || []).map((a) => (a == null ? "—" : (a * 1000).toFixed(1) + " mA"));
-    parts.push(`amps <b>${amps.join(" / ")}</b>`);
+    // the current the wires get, measured by the box (as the M5 remote shows it); what was asked, small, after it
+    const ma = (a) => (a == null ? "—" : (a * 1000).toFixed(1) + " mA");
+    const meas = eng.measured || [];
+    parts.push(`current <b class="ch-a">A ${ma(meas[0])}</b> <b class="ch-b">B ${ma(meas[1])}</b>`);
+    parts.push(`<small class="muted">asked ${(eng.amps || []).map(ma).join(" / ")}</small>`);
   }
   parts.push(`output <b>${s.output}</b>`);
   $("status").innerHTML = parts.join(" · ");

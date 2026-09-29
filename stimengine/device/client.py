@@ -119,6 +119,7 @@ class Telemetry:
     rms: tuple[float, float, float, float] | None = None
     peak: tuple[float, float, float, float] | None = None
     peak_cmd: float | None = None
+    currents_at: float | None = None      # time.monotonic() of the last currents notification
     output_power: float | None = None
     output_power_skin: float | None = None
 
@@ -420,6 +421,7 @@ class FocStimClient:
             t.rms = (b.rms_a, b.rms_b, b.rms_c, b.rms_d)
             t.peak = (b.peak_a, b.peak_b, b.peak_c, b.peak_d)
             t.peak_cmd, t.output_power, t.output_power_skin = b.peak_cmd, b.output_power, b.output_power_skin
+            t.currents_at = time.monotonic()
         elif kind in ("output_resistance", "skin_resistance"):
             z = Complex4(
                 complex(b.resistance_a, b.reluctance_a),

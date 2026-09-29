@@ -779,3 +779,18 @@ def test_swap_trades_the_routes_and_each_wire_pair_keeps_its_level():
     assert run.swap() == [24, 13]
     assert run.levels == [0.2, 0.7], "the level follows its wires"
     assert run.swap() == [13, 24] and run.levels == [0.7, 0.2]
+
+
+@run_async
+async def test_measured_current_per_channel_is_the_remotes_figure(tmp_path):
+    import time as _t
+    box, eng = await box_engine(tmp_path, fork=True, deadman_silence_s=5.0)
+    run = Foc312Runner(eng, make_config())
+    run.routes = [13, 24]
+    t = eng.client.telemetry
+    t.peak, t.currents_at = (0.050, 0.030, 0.020, 0.045), _t.monotonic()
+    assert run.engine_view()["measured"] == [0.020, 0.030], "the smaller of each route's two electrodes"
+    t.currents_at = _t.monotonic() - 5
+    assert run.engine_view()["measured"] == [None, None], "stale -> unknown"
+    await eng.stop()
+    box.stop()
