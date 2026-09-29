@@ -124,8 +124,8 @@ This is the home of the PlaStim foc312 family. You only install this app; it put
 | Project | What it is |
 |---|---|
 | **foc312-engine** (this) | the PC app: hub, player, safety stack. **Start here.** |
-| [foc312](https://github.com/plastim/foc312) | the firmware for the FOC-Stim box (a fork of diglet48's). The hub flashes it. |
-| [foc312-m5remote](https://github.com/plastim/foc312-m5remote) | the firmware for the handheld M5 remote. The hub flashes it. |
+| [foc312](https://github.com/plastim/foc312) | the firmware for the FOC-Stim box (a fork of diglet48's). foc312-engine flashes it. |
+| [foc312-m5remote](https://github.com/plastim/foc312-m5remote) | the firmware for the handheld M5 remote. foc312-engine flashes it. |
 
 ## What you need
 
