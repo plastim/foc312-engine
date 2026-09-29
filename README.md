@@ -1,14 +1,19 @@
 # PlaStim foc312 engine
 
-**The ET-312 you know, on better hardware.**
+**ET-312 emulation on the FOC-Stim V4.**
 
-foc312 turns a **FOC-Stim V4** into an ET-312B. It runs the patterns you know (Waves, Stroke, Climb, Orgasm and
-the rest; only the three audio modes are left out), your ErosLink routines, and the MA knob, **with the ET-312's
-own timing**. It isn't an imitation that
-"feels a bit like it". It runs the ET-312B's actual mode programs on a faithful re-implementation of the 312's
-routine engine, tick for tick at the box's own 244 Hz, checked against the annotated disassembly of the original
-firmware. ErosLink routines are compiled the way ErosLink itself compiles them, and the result is checked against
-ErosLink's own output for every routine it ships with.
+The **ET-312B** is a long-running e-stim box, still one of the best-known in the hobby. It's loved for its built-in
+patterns: Waves, Stroke, Climb, Orgasm and more, each shaping the pulses over time in its own way, with an **MA**
+knob that changes how each one moves. Its companion software, ErosLink, lets people write their own patterns
+(`.elk` files), and a lot of them have been shared over the years.
+
+foc312 brings that to the **[FOC-Stim V4](https://github.com/diglet48/FOC-Stim)**, a modern open-hardware e-stim
+box. It plays the ET-312's patterns and ErosLink routines **with the original timing and behaviour**, closely enough
+that they feel like the patterns ET-312 owners know. The three audio modes are the exception (see
+[Limits](#limits-being-honest)). It's an independent re-implementation, built from what the e-stim community has
+openly documented about the ET-312 over the years. No ErosTek software or data is included: if you own an
+ET-312, the app reads the built-in patterns from your own box's firmware file. foc312 is not affiliated with or
+endorsed by ErosTek.
 
 Then it plays all of that through hardware the 312 never had:
 
@@ -33,9 +38,8 @@ before opening restim, and the other way round.
 
 ### Where it excels
 
-- **The patterns are the real thing.** The ET-312's own mode programs, the MA knob's behaviour per mode, the ramp
-  on mode change, and the Advanced settings with their register ranges. ErosLink routines play the way ErosLink
-  would have compiled them for your box.
+- **Faithful patterns.** The ET-312's modes with their original timing, the MA knob's behaviour in each mode, the
+  ramp on a mode change, and the Advanced settings. ErosLink routines play as they would on an ET-312.
 - **Steady sensation.** The strength holds as skin and pads change, instead of creeping up as you sweat or fading as
   a pad dries.
 - **Wiring as a setting.** Move a channel to another pair of pads, share a pad between both channels, or flip a

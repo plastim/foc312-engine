@@ -116,9 +116,9 @@ The hub's **Play** tab has a checklist that ticks itself as you go:
 Out of the box the player has the PlaStim routines. Two more groups need files you own:
 
 - **The ET-312's 18 built-in modes** (Waves, Stroke, Climb, ...). They are ErosTek's and are not included. If you own
-  an ET-312B, get its firmware as a decrypted v1.6 image (the buttshock project's `scripts/fw-utils.py
-  --downloadfw` reads it from your own box), then on the hub's **M5 remote** tab choose the file and press
-  **Extract**. Only the mode programs are kept, on your computer.
+  an ET-312B (firmware v1.6), save a copy of its firmware from your own box as a `.bin` or `.hex` file (the
+  buttshock community's tools can read it over the box's serial link), then on the hub's **M5 remote** tab choose
+  the file and press **Extract**. Only the pattern data is kept, on your computer.
 - **ErosLink routines.** ErosLink's own routines come from its installer (`ErosLink_Installer.zip`). Read them in
   once, from PowerShell in the `foc312-engine` folder:
 

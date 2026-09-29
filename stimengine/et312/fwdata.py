@@ -7,7 +7,7 @@ reimplementation and run whatever blocks they are given.
 
 Where the blocks come from, first match wins:
   1. `[et312] firmware_data` in config/engine.toml, or $STIM_ENGINE_ET312_DATA: a JSON file written by this module;
-  2. `[et312] firmware_image`, or $STIM_ENGINE_ET312_IMAGE: the user's decrypted v1.6 firmware image (.bin, or
+  2. `[et312] firmware_image`, or $STIM_ENGINE_ET312_IMAGE: the user's own v1.6 firmware image (.bin, or
      Intel .hex), e.g. from the buttshock project's `scripts/fw-utils.py --downloadfw`;
   3. `config/et312-firmware-data.json`: what the PC app's "ET-312 built-in modes" card writes from an uploaded image
      (gitignored: it stays on this computer);
@@ -86,11 +86,11 @@ def _read_image(path: Path) -> bytes:
 
 
 def from_image(path: str | Path) -> FirmwareData:
-    """Decode the 36 program blocks from a decrypted ET-312B v1.6 firmware image."""
+    """Decode the 36 program blocks from an ET-312B v1.6 firmware image (read from the user's own box)."""
     p = Path(path)
     img = _read_image(p)
     if len(img) < PROG_END:
-        raise FirmwareDataError(f"{p.name}: {len(img)} bytes; not a decrypted ET-312B image (need >= {PROG_END})")
+        raise FirmwareDataError(f"{p.name}: {len(img)} bytes; not an ET-312B v1.6 firmware image (need >= {PROG_END})")
     blocks: dict[int, list[tuple]] = {}
     for idx in range(NBLOCKS):
         start = PROG_BASE + 2 * img[TABLE + idx]
@@ -175,7 +175,7 @@ def set_default(data: FirmwareData | None) -> None:
 
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description="Extract the ET-312B built-in mode blocks from your own firmware image.")
-    ap.add_argument("--image", required=True, help="decrypted ET-312B v1.6 image (.bin or .hex)")
+    ap.add_argument("--image", required=True, help="your own ET-312B v1.6 firmware image (.bin or .hex)")
     ap.add_argument("--out", default=str(PRIVATE_DATA))
     args = ap.parse_args(argv)
     data = from_image(args.image)

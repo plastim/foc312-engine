@@ -176,7 +176,7 @@ def test_extract_refuses_what_is_not_an_image(user_data):
     def hub():
         return Hub(engine=FakeEngine())                               # one per event loop
     st, d = run(_req(hub(), "POST", "/api/et312/extract", data=b"\x00" * 100))
-    assert st == 400 and "not a decrypted ET-312B v1.6 image" in d["error"] and not user_data.exists()
+    assert st == 400 and "not an ET-312B v1.6 firmware image" in d["error"] and not user_data.exists()
     st, d = run(_req(hub(), "POST", "/api/et312/extract", data=b":00000001FF\n"))       # an empty Intel HEX file
     assert st == 400
     st, d = run(_req(hub(), "POST", "/api/et312/extract", data=b"\xff" * (300 * 1024)))

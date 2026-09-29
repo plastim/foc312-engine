@@ -16,7 +16,7 @@
     PUT  /api/remote/settings       save them (validated as a load would; an empty password keeps the stored one)
     GET  /api/remote/patterns       the pattern files a load would put on the remote, per group
     GET  /api/et312                 whether the ET-312 built-in mode data is available, and from where
-    POST /api/et312/extract         the user's own decrypted ET-312 v1.6 image -> config/et312-firmware-data.json
+    POST /api/et312/extract         the user's own ET-312 v1.6 firmware image -> config/et312-firmware-data.json
 
 Nothing that writes to a device runs on the port the engine owns: disconnect first.
 """
@@ -445,6 +445,6 @@ class Hub:
         try:
             data = await asyncio.get_running_loop().run_in_executor(None, work)
         except (fwdata.FirmwareDataError, ValueError, KeyError, IndexError) as exc:
-            return _err(f"not a decrypted ET-312B v1.6 image: {exc}")
+            return _err(f"not an ET-312B v1.6 firmware image: {exc}")
         return web.json_response({"ok": True, "blocks": len(data.blocks), "sha256": hashlib.sha256(raw).hexdigest(),
                                   "path": str(fwdata.USER_DATA), "source": data.source})

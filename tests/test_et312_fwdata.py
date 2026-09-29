@@ -69,7 +69,7 @@ def test_without_data_builtins_are_absent_but_the_engine_still_works(monkeypatch
 
 @pytest.mark.skipif(not os.environ.get("STIM_ENGINE_ET312_IMAGE"), reason="set STIM_ENGINE_ET312_IMAGE to your image")
 def test_your_image_matches_the_data_in_use():
-    """With your own decrypted v1.6 image: every mode runs identically from the image and from the loaded data."""
+    """With your own v1.6 firmware image: every mode runs identically from the image and from the loaded data."""
     img = fwdata.from_image(os.environ["STIM_ENGINE_ET312_IMAGE"])
     cur = fwdata.default()
     if cur is None:
