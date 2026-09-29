@@ -10,7 +10,7 @@ patterns: Waves, Stroke, Climb, Orgasm and more, each shaping the pulses over ti
 foc312 brings that to the **[FOC-Stim V4](https://github.com/diglet48/FOC-Stim)**, a modern open-hardware e-stim
 box. It plays the ET-312's patterns and ErosLink routines **with the original timing and behaviour**, closely enough
 that they feel like the patterns ET-312 owners know. The three audio modes are the exception (see
-[Limits](#limits-being-honest)). It's an independent re-implementation, built from what the e-stim community has
+[Limitations](#limitations)). It's an independent re-implementation, built from what the e-stim community has
 openly documented about the ET-312 over the years. No ErosTek software or data is included: if you own an
 ET-312, the app reads the built-in patterns from your own box's firmware file. foc312 is not affiliated with or
 endorsed by ErosTek.
@@ -77,7 +77,7 @@ That's more contacts than a two-channel box can use at once, which is why PlaSti
 - **Polarity becomes a real control.** On a Pinnacle-to-base-ring channel, a flip moves the sensation from an
   intense corona focus to a harder shaft sensation ([why](#why-flip-the-polarity--a--b)).
 
-### Limits (being honest)
+### Limitations
 
 - **No audio modes.** The ET-312's Audio 1, 2 and 3 play from a sound input, and there isn't one here. For
   audio-driven stim, use restim.
