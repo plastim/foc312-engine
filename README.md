@@ -12,8 +12,9 @@ ErosLink's own output for every routine it ships with.
 
 Then it plays all of that through hardware the 312 never had:
 
-- **Current-controlled output.** The ET-312 pushes voltage through transformers, so what you feel drifts as your
-  skin and the pads change. The FOC-Stim measures the current in every pulse and delivers what was asked for.
+- **Current-controlled output.** The ET-312 sets a voltage and the current lands wherever your skin puts it, so
+  what you feel drifts as the pads warm up and the skin changes. The FOC-Stim measures the current of every pulse
+  and corrects the next ones, so you keep getting the charge that was asked for.
 - **Four electrodes, any wiring.** Channels A and B each go on **any pair** of the four electrodes, in either
   direction, changed live with no rewiring: the same pad on both channels, a triangle across three pads, A/B split
   across four.
@@ -29,6 +30,46 @@ Then it plays all of that through hardware the 312 never had:
 [restim](https://github.com/diglet48/restim) (diglet48's app for continuous three- and four-phase waveforms,
 funscripts and audio) works on the same box, as before, with no reflashing. Use one or the other: close this app
 before opening restim, and the other way round.
+
+### Where it excels
+
+- **The patterns are the real thing.** The ET-312's own mode programs, the MA knob's behaviour per mode, the ramp
+  on mode change, and the Advanced settings with their register ranges. ErosLink routines play the way ErosLink
+  would have compiled them for your box.
+- **Steady sensation.** The strength holds as skin and pads change, instead of creeping up as you sweat or fading as
+  a pad dries.
+- **Wiring as a setting.** Move a channel to another pair of pads, share a pad between both channels, or flip a
+  channel's polarity ([why](#why-flip-the-polarity--a--b)), instantly, with nothing to unplug.
+- **Shapes and balance.** Pulse shapes the 312 can't make. Every pulse is charge-balanced, and the output
+  transformers block DC entirely.
+- **It tells you what happened.** Live measured current, and a trip report when the box's protection stops the
+  output: what was measured, where in the pulse, and what was asked for.
+
+### Limits (being honest)
+
+- **No audio modes.** The ET-312's Audio 1, 2 and 3 play from a sound input, and there isn't one here. For
+  audio-driven stim, use restim.
+- **It's not a 312 on the wire.** It doesn't speak the ET-312's serial protocol, so software that controls a real
+  312 (ErosLink live, the link cable between two boxes, other 312 apps) can't connect to it. Import `.elk` files
+  instead.
+- **Strength isn't on the 312's scale.** Levels map to current, up to the cap you set, not to the 312's output
+  voltage. Level 50 won't feel like level 50 on a 312: start low.
+- **Pulse limits.** Up to 400 pulses per second per channel (a 312 goes a little higher). A and B take turns,
+  never pulsing at the same instant, and together they top out around 800 to 1000 pulses per second (fewer with
+  wide pulses).
+- **Pulse widths are 40 to 400 µs, in 20 µs steps.** The engine adjusts the strength so a smooth sweep still feels
+  smooth. Very short pulses come out rounded, so the 312's hard-edged square can only be approached, not copied.
+- **Settings reach the box 50 times a second.** The pattern engine runs at the 312's full 244 Hz, but anything
+  that changes faster than every 20 ms is sampled.
+- **Dry skin plus wide pulses can hit the box's drive limit.** At a high skin resistance the box scales the
+  current down. Good pads and a little gel fix it.
+- **Two channels.** Four electrodes, but two channels (A and B), as on the 312.
+
+### Where this is going: PlaStim Sedecim
+
+foc312 is also a **test step for PlaStim Sedecim**, a 16-electrode box in development. The pattern engine, the
+per-pulse current model and guard, the safety stack and the remote are being proven here first, on hardware people
+already own, before they move to Sedecim.
 
 | | |
 |---|---|
