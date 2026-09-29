@@ -117,9 +117,19 @@ def firmware_of(kind: str, detail: str) -> tuple[int | None, str]:
     m = re.search(r"stim-engine biphasic-pairs(?: v(\d+))?", detail)
     if m:
         v = int(m.group(1)) if m.group(1) else 1
-        return v, f"PlaStim fork v{v}"
+        return v, f"PlaStim firmware v{v}"
     ver = detail.split()[0] if detail.split() else ""
     return 0, f"stock {ver}".strip()
+
+
+def record_flash(port: str, label: str) -> None:
+    """Remember what was just flashed onto the device on `port` (the remote doesn't report its own version)."""
+    for d in ports():
+        if d["port"].upper() == port.upper() and d["serial"]:
+            known = _load_known()
+            known.setdefault(d["serial"], {"kind": "remote", "detail": ""})["flashed"] = label
+            _save_known(known)
+            return
 
 
 def known_kind(port: str) -> str:
@@ -160,6 +170,8 @@ async def scan(in_use: set[str], probe_mode: int = 0) -> list[dict]:
             d["kind"], d["detail"] = "unknown", ""
         d["name"] = names.get(d["serial"].lower(), "") if d["kind"] != "remote" else "M5 remote"
         d["fw_fork"], d["fw_label"] = firmware_of(d["kind"], d["detail"])
+        if d["kind"] == "remote" and known.get(d["serial"], {}).get("flashed"):
+            d["fw_label"] = known[d["serial"]]["flashed"]         # the remote can't say; what this PC flashed
     if changed:
         _save_known(known)
     return devs

@@ -172,7 +172,7 @@ def collect(*, firmware=None, elk_dir: str | Path | None = None, ours_dir: str |
                 if after == key:
                     entries.append(Entry(vname, GROUP_BUILTIN, mode=M.MODE_BY_NAME[vkey]))
     else:
-        notes.append("no ET-312 firmware data: built-in modes left out (see stimengine/et312/fwdata.py)")
+        notes.append("no ET-312 firmware file extracted: the 18 built-in modes are left out (hub, M5 remote tab: Extract)")
 
     def add_routines(listing: list[dict], group_of) -> None:
         for r in listing:

@@ -61,13 +61,19 @@ def view(path: Path | None = None) -> dict:
         "missing": missing,
         "wifi": {"ssid": str(wifi.get("ssid", "")), "has_password": bool(wifi.get("password"))},
         # m5config: a [direct] section counts as enabled unless it says enabled = false
-        "direct": {"enabled": bool(d) and bool(d.get("enabled", True)),
+        # nothing saved yet: the remote's own network, the recommended mode (README); a saved file without a
+        # [direct] section is the house network, as m5config reads it
+        "direct": {"enabled": bool(d.get("enabled", True)) if d else missing,
                    "ssid": str(d.get("ssid", DIRECT_DEFAULTS["ssid"])),
                    "has_password": bool(d.get("password")),
                    "channel": int(d.get("channel", DIRECT_DEFAULTS["channel"]))},
         "boxes": [{"name": str(b.get("name", "")), "mac": str(b.get("mac", "")), "host": str(b.get("host", "")),
                    "port": int(b.get("port", 55533))} for b in raw.get("box") or []],
     }
+    if missing:
+        out["remote_gets"], out["build_error"] = None, "Nothing saved yet: fill in the settings and press Save settings."
+        out["last_load"] = last_load(path)
+        return out
     try:
         built = m5config.build(_engine_cfg(), raw, _foc312_state())
         built["wifi"].pop("password", None)

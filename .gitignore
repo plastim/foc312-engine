@@ -11,11 +11,8 @@ config/last-state.tmp
 config/foc312-state.json
 config/foc312-state.tmp
 config/points/
-hardware/bench-board/kicad/assembly/
-hardware/bench-board/kicad/*/fab/gerbers/
 remote/build/
 config/m5.toml
-private/m5/*.bin
 config/devices.json
 config/m5-last-load.json
 config/et312-firmware-data.json

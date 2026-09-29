@@ -7,5 +7,5 @@ if not exist "venv\Scripts\python.exe" (
     pause
     exit /b 1
 )
-"venv\Scripts\python.exe" -m stimengine.app
+"venv\Scripts\python.exe" -m stimengine.app %*
 pause

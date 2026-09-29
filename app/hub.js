@@ -44,7 +44,8 @@ function devLabel(d) {
 function fwTag(d) {
   if (d.kind === "remote") {
     const free = /free (\d+)/.exec(d.detail || "");
-    if (free) return h("span", { class: "tag ok" }, `ready · ${(free[1] / 1048576).toFixed(1)} MB free for patterns`);
+    if (free) return [d.fw_label ? h("span", { class: "tag ok" }, d.fw_label) : null, d.fw_label ? " " : null,
+      h("span", { class: "tag ok" }, `ready · ${(free[1] / 1048576).toFixed(1)} MB free for patterns`)];
     if (/busy/.test(d.detail || "")) return h("span", { class: "tag warn" }, "running a session (stop it to load or flash)");
     return h("span", { class: "muted" }, d.detail || "");
   }
@@ -97,7 +98,7 @@ async function refreshEngine() {
   link.classList.toggle("disabled", !run);
   $("playStatus").textContent = run
     ? `The engine is driving the box on ${engine.port}${engine.pid ? " (process " + engine.pid + ")" : ""}. Open the player to play.`
-    : "The engine is not running. Connect it to a box below or on the Boxes tab.";
+    : "The engine is not running. Connect it to a box in Getting started (step 3) or on the Boxes tab.";
   $("engineWhere").textContent = run ? `· ${engine.port}` : "";
   renderDevices();                                    // the engine log itself: refreshStatus (filtered)
 }
@@ -125,6 +126,7 @@ async function refreshDevices(probe = false) {
   if (!r.ok) { showError(r.data.error || "device list unavailable"); return; }
   devices = r.data.devices || [];
   renderDevices();
+  detectedBoxButtons();
 }
 function engineOn(port) { return !!(engine && engine.running && engine.port === port); }
 function renderDevices() {
@@ -170,7 +172,9 @@ function renderDevices() {
 }
 // Detect: ask each free device what it is (the answer is remembered by the hub); both buttons share it
 async function detect() {
-  for (const id of ["identify", "detectHere"]) { $(id).disabled = true; $(id).textContent = "Detecting…"; }
+  for (const id of ["identify", "detectHere"]) {       // a port that doesn't answer is waited for, a few s each
+    $(id).disabled = true; $(id).textContent = "Detecting… (can take up to a minute)";
+  }
   await refreshDevices(true);
   for (const id of ["identify", "detectHere"]) { $(id).disabled = false; $(id).textContent = "Detect"; }
 }
@@ -181,6 +185,10 @@ document.querySelectorAll("[data-goto]").forEach((a) => a.addEventListener("clic
   history.replaceState(null, "", "#" + a.dataset.goto);
   showTab(a.dataset.goto);
 }));
+window.addEventListener("hashchange", () => {          // a #boxes link on a page that's already open
+  const t = location.hash.slice(1);
+  if (document.getElementById("panel-" + t)) showTab(t);
+});
 
 // ---------------------------------------------------------------- getting started (Play tab)
 function step(id, done, todo) {
@@ -194,6 +202,8 @@ function updateSteps(running) {
   s1.innerHTML = "";
   if (boxes.length) boxes.forEach((d) => s1.append(h("span", { class: "tag ok" }, `${devName(d)} on ${d.port}`), " "));
   else if (unknown.length) s1.append(`Found ${unknown.length} USB device${unknown.length > 1 ? "s" : ""} not identified yet: press Detect.`);
+  else if (devices.some((d) => d.kind === "remote"))
+    s1.append(`M5 remote found on ${devices.find((d) => d.kind === "remote").port}; no box yet.`);
   else s1.append("Nothing found yet.");
   step("stepPlug", boxes.length, true);
   const s2 = $("stepFwState");
@@ -222,22 +232,27 @@ async function loadFirmware() {
   const order = (a, b) => (b.recommended ? 1 : 0) - (a.recommended ? 1 : 0);
   const src = (i) => i.source === "release" ? " [PlaStim release \u2713]" : i.source === "stock" ? " [stock, diglet48]"
     : i.source === "local" ? " [local build]" : "";
-  const lbl = (i) => `${i.name}${i.version ? " " + i.version : ""}${i.recommended ? " (recommended)" : ""}${src(i)}${i.error ? " — " + i.error : ""}`;
+  const lbl = (i) => `${imgTitle(i)}${i.recommended ? " (recommended)" : ""}${src(i)}${i.error ? " — " + i.error : ""}`;
   fillSelect($("boxImage"), firmware.box.slice().sort(order), lbl, (i) => i.id, "no box images found");
   fillSelect($("remoteImage"), firmware.remote.slice().sort(order), lbl, (i) => i.id, "no remote images found");
   imageInfo("box"); imageInfo("remote");
   updateBoxFlash(); updateRemoteButtons();
+}
+// the name, plus the version when the name doesn't already carry it ("PlaStim firmware v9", not "... v9 9")
+function imgTitle(i) {
+  const v = i.version ? String(i.version) : "";
+  return v && !i.name.includes(v) ? `${i.name} ${v}` : i.name;
 }
 function image(kind) { return firmware[kind].find((i) => i.id === $(kind + "Image").value); }
 function imageInfo(kind) {
   const i = image(kind), box = $(kind + "ImageInfo");
   box.innerHTML = "";
   if (!i) return;
-  box.append(h("div", {}, h("b", {}, i.name), i.version ? ` · ${i.version}` : "", i.file ? ` · ${i.file}` : ""),
+  box.append(...[h("div", {}, h("b", {}, imgTitle(i)), i.file ? ` · ${i.file}` : ""),
     i.sha256 ? h("div", { class: "mono" }, "SHA-256 " + i.sha256) : null,
     i.notes ? h("div", {}, i.notes) : null,
-    i.source === "release" ? h("div", { class: "tag ok" }, "signed by PlaStim \u2713") : null,
-    i.source === "stock" ? h("div", { class: "muted" }, "the original FOC-Stim firmware (diglet48), a known build") : null);
+    i.source === "release" ? h("div", {}, h("span", { class: "tag ok" }, "signed by PlaStim \u2713")) : null,
+    i.source === "stock" ? h("div", { class: "muted" }, "the original FOC-Stim firmware (diglet48), a known build") : null].filter(Boolean));
 }
 
 // ---------------------------------------------------------------- firmware updates (GitHub releases, signed)
@@ -259,7 +274,7 @@ function renderUpdates(kind) {
       title: rel.signed ? "download and verify" : "this release is not signed: the app will not use it",
       onclick: () => download(kind, { tag: rel.tag }) }, rel.downloaded ? "Downloaded" : "Download");
     list.append(h("div", { class: "uprow" },
-      h("div", {}, h("b", {}, rel.name || rel.tag), n === 0 ? h("span", { class: "tag ok" }, "latest") : null, " ",
+      h("div", {}, h("b", {}, rel.name || rel.tag), " ", n === 0 ? h("span", { class: "tag ok" }, "latest") : null, " ",
         h("span", { class: "muted" }, (rel.published || "").slice(0, 10)), " ",
         rel.signed ? h("span", { class: "muted" }, "signed release") : h("span", { class: "tag warn" }, "not signed"),
         rel.notes ? h("div", { class: "muted upnotes" }, rel.notes) : null),
@@ -289,9 +304,14 @@ async function download(kind, what) {
   const r = await api("/api/updates/download", { kind, ...what });
   if (!r.ok) { showError(r.data.error || "download failed"); return; }
   showError(null);
+  const rel = upState[kind] && (upState[kind].releases || []).find((x) => x.tag === what.tag);
+  if (rel) rel.downloaded = true;                  // shown at once, without asking GitHub again
+  if (what.stock && upState[kind] && upState[kind].stock) upState[kind].stock.downloaded = true;
+  renderUpdates(kind);
   await loadFirmware();
-  if (r.data.image && r.data.image.id) { $(kind + "Image").value = r.data.image.id; imageInfo(kind); }
-  checkUpdates(kind);
+  if (r.data.image && r.data.image.id && !what.stock) {   // a stock download never takes over the selection
+    $(kind + "Image").value = r.data.image.id; imageInfo(kind); updateBoxFlash(); updateRemoteButtons();
+  }
 }
 for (const kind of ["box", "remote"]) {
   $(kind + "UpCheck").addEventListener("click", () => checkUpdates(kind));
@@ -386,10 +406,12 @@ $("boxFlashBtn").addEventListener("click", () => {
   if (boxWhyNot()) return;
   const port = $("boxPort").value, dev = devices.find((d) => d.port === port), img = image("box");
   $("boxConfirmText").innerHTML = "";
-  $("boxConfirmText").append("Flash ", h("b", {}, `${img.name}${img.version ? " " + img.version : ""}`),
+  $("boxConfirmText").append("Flash ", h("b", {}, imgTitle(img)),
     " to the box on ", h("b", {}, port), dev.serial ? ` (${dev.serial})` : "", "?",
-    img.sha256 ? h("div", { class: "mono" }, "SHA-256 " + img.sha256) : null,
-    h("div", {}, "The box has no working firmware from the erase until the flash is verified (about a minute). Don't unplug it."));
+    ...[img.sha256 ? h("div", { class: "mono" }, "SHA-256 " + img.sha256) : null,
+    h("div", {}, h("b", {}, "Take the electrodes off"), " and keep the M5 remote switched off."),
+    h("div", {}, "The box has no working firmware from the erase until the flash is verified (about a minute). Don't unplug it.")]
+      .filter(Boolean));
   $("boxConfirm").hidden = false;
 });
 $("boxFlashCancel").addEventListener("click", () => { $("boxConfirm").hidden = true; });
@@ -398,7 +420,7 @@ $("boxFlashGo").addEventListener("click", async () => {
   if (boxWhyNot()) return;
   const port = $("boxPort").value, img = image("box");
   await startJob("box", "/api/flash/box", { port, image: img.id, confirm: true, remote_off: true },
-    `Flash ${img.name} → ${port}`);
+    `Flash ${imgTitle(img)} → ${port}`);
   $("remoteOff").checked = false;             // asked again for the next flash
   updateBoxFlash();
 });
@@ -445,10 +467,10 @@ $("remoteFlashBtn").addEventListener("click", () => {
   if (remoteWhyNot(true)) return;
   const port = $("remotePort").value, img = image("remote");
   $("remoteConfirmText").innerHTML = "";
-  $("remoteConfirmText").append("Flash ", h("b", {}, `${img.name}${img.version ? " " + img.version : ""}`),
+  $("remoteConfirmText").append("Flash ", h("b", {}, imgTitle(img)),
     " to the remote on ", h("b", {}, port), "?",
-    img.sha256 ? h("div", { class: "mono" }, "SHA-256 " + img.sha256) : null,
-    h("div", {}, "The remote must be stopped. It restarts when the flash is done."));
+    ...[img.sha256 ? h("div", { class: "mono" }, "SHA-256 " + img.sha256) : null,
+    h("div", {}, "The remote must be stopped. It restarts when the flash is done.")].filter(Boolean));
   $("remoteConfirm").hidden = false;
 });
 $("remoteFlashCancel").addEventListener("click", () => { $("remoteConfirm").hidden = true; });
@@ -456,7 +478,7 @@ $("remoteFlashGo").addEventListener("click", () => {
   $("remoteConfirm").hidden = true;
   if (remoteWhyNot(true)) return;
   const port = $("remotePort").value, img = image("remote");
-  startJob("remote", "/api/flash/remote", { port, image: img.id, confirm: true }, `Flash ${img.name} → ${port}`);
+  startJob("remote", "/api/flash/remote", { port, image: img.id, confirm: true }, `Flash ${imgTitle(img)} → ${port}`);
 });
 
 // ---------------------------------------------------------------- hotkeys
@@ -539,7 +561,7 @@ async function refreshStatus() {
   if (s.running || s.reachable) {
     const state = s.state === "running" ? "RUNNING" : s.state === "stopped" ? "stopped" : s.state === "fault" ? "FAULT" : "—";
     const linkOk = s.telemetry_age_s != null && s.telemetry_age_s <= 3;
-    const out = { preview: "Preview (not the box)", fork: "the box (PlaStim fw)", stock: "the box (stock fw)" }[s.output] || s.output;
+    const out = { preview: "nothing yet (no box with the PlaStim firmware)", fork: "the box (PlaStim firmware)" }[s.output] || s.output;
     grid.append(
       stat("Output", state, s.state === "running" ? "good" : s.state === "fault" ? "bad" : ""),
       stat("Box", s.port ? `${s.port}${s.link && s.link !== "serial" ? " · " + s.link : ""}` : dash(s.link), linkOk ? "good" : "warn"),
@@ -584,20 +606,29 @@ function boxRow(b = {}) {
     h("td", {}, h("input", { class: "bx-name", value: b.name || "", maxlength: 24, placeholder: "box 1" })),
     h("td", {}, h("input", { class: "bx-mac mono", value: b.mac || "", placeholder: "aa:bb:cc:dd:ee:ff" })),
     h("td", {}, h("input", { class: "bx-host", value: b.host || "", placeholder: "only for house Wi-Fi" })),
-    h("td", { class: "act" }, h("button", { onclick: () => tr.remove(), title: "remove this box" }, "Remove")));
+    h("td", { class: "act" }, h("button", { onclick: () => { tr.remove(); detectedBoxButtons(); }, title: "remove this box" }, "Remove")));
   tr.dataset.port = b.port || 55533;
   return tr;
+}
+// a box's USB serial number is its Wi-Fi MAC: boxes on USB and not in the list yet
+function boxesToAdd() {
+  const have = [...document.querySelectorAll("#m5Boxes .bx-mac")].map((i) => i.value.trim().toLowerCase());
+  return devices.filter((d) => d.kind === "box" && /^([0-9a-f]{2}:){5}[0-9a-f]{2}$/i.test(d.serial || "")
+    && !have.includes(d.serial.toLowerCase()));
+}
+function addDetectedBox(d) {
+  $("m5Boxes").append(boxRow({ name: d.name || "", mac: d.serial.toLowerCase() }));
+  detectedBoxButtons();
 }
 function detectedBoxButtons() {
   const span = $("m5AddDetected");
   if (!span) return;
   span.innerHTML = "";
-  const have = [...document.querySelectorAll("#m5Boxes .bx-mac")].map((i) => i.value.trim().toLowerCase());
-  for (const d of devices.filter((d) => d.kind === "box" && d.serial)) {
-    if (have.includes(d.serial.toLowerCase())) continue;
-    span.append(h("button", { onclick: () => { $("m5Boxes").append(boxRow({ name: d.name || "", mac: d.serial.toLowerCase() })); detectedBoxButtons(); } },
-      `Add ${d.name || "the FOC-Stim"} on ${d.port}`), " ");
-  }
+  const todo = boxesToAdd();
+  if (todo.length > 1) for (const d of todo)
+    span.append(h("button", { onclick: () => addDetectedBox(d) }, `Add ${devName(d)} on ${d.port}`), " ");
+  $("m5AddBox").textContent = todo.length === 1 ? `Add ${devName(todo[0])} (${todo[0].port})` : "Add a box";
+  $("m5AddBox").title = todo.length ? "" : "no box on USB that isn't listed: plug it in and press Detect, or type its MAC";
 }
 async function loadM5Settings(fillForm = true) {
   const r = await api("/api/remote/settings");
@@ -618,7 +649,9 @@ async function loadM5Settings(fillForm = true) {
     m5ModeNote();
   }
   $("m5SetState").textContent = m5.missing ? "· not set up yet" : m5.build_error ? "· needs attention" : "";
-  $("m5SaveMsg").textContent = m5.build_error || "";
+  if (m5.build_error || $("m5SaveMsg").className === "warntext") {   // keep a fresh "Saved." unless there's a problem
+    $("m5SaveMsg").textContent = m5.build_error || ""; $("m5SaveMsg").className = m5.build_error ? "warntext" : "muted";
+  }
   const saf = $("m5Safety");
   saf.innerHTML = "";
   const g = m5.remote_gets;
@@ -637,7 +670,11 @@ async function loadM5Settings(fillForm = true) {
   detectedBoxButtons();
 }
 $("m5Mode").addEventListener("change", m5ModeNote);
-$("m5AddBox").addEventListener("click", () => { $("m5Boxes").append(boxRow({})); });
+$("m5AddBox").addEventListener("click", () => {       // the one box on USB, filled in; else an empty row to type
+  const todo = boxesToAdd();
+  if (todo.length === 1) addDetectedBox(todo[0]);
+  else { $("m5Boxes").append(boxRow({})); detectedBoxButtons(); }
+});
 $("m5Save").addEventListener("click", async () => {
   const boxes = [...$("m5Boxes").querySelectorAll("tr")].map((tr) => ({
     name: tr.querySelector(".bx-name").value.trim(), mac: tr.querySelector(".bx-mac").value.trim(),
@@ -663,8 +700,9 @@ const GROUP_HELP = {
   "Built-in modes": () => "The ET-312's own 18 modes. Not included: extract them from your own ET-312's firmware (card below).",
   "ErosLink": () => "The routines ErosTek shipped with ErosLink, from ErosLink's installer (see below).",
   "ErosLink examples": () => "ErosLink's designer examples, from the same installer.",
-  "Your routines": (p) => [".elk files in your ErosLink folder: ", h("span", { class: "mono" }, p.elk_dir.path),
-    p.elk_dir.exists ? "" : " (not found)", ". Put new .elk files there."],
+  "Your routines": (p) => [p.shared && p.shared.count ? `The ET-312 shared routines (${p.shared.count} files), and ` : "",
+    p.elk_dir.path ? [".elk files in your folder: ", h("span", { class: "mono" }, p.elk_dir.path),
+      p.elk_dir.exists ? "" : " (not found)"] : ".elk files in a folder of your own (INSTALL.md, step 8)", "."],
   "Our routines": (p) => ["PlaStim's routines in this program's folder: ", h("span", { class: "mono" }, p.ours_dir.path),
     p.ours_dir.exists ? "" : " (empty so far)"],
 };
@@ -674,7 +712,10 @@ async function loadPatterns() {
   if (!r.ok) { tb.innerHTML = ""; tb.append(h("tr", {}, h("td", { colspan: 3, class: "muted" }, r.data.error || "could not read the pattern files"))); return; }
   const p = r.data;
   tb.innerHTML = "";
-  for (const g of p.groups) tb.append(h("tr", {}, h("td", {}, h("b", {}, g.name)),
+  const shared = p.shared ? p.shared.count : 0;
+  $("sharedGet").textContent = shared ? "Get them again" : "Get the ET-312 shared routines";
+  $("sharedState").textContent = shared ? `${shared} shared routines on this computer` : "";
+  for (const g of p.groups.filter((g) => g.count || g.name !== "Our routines")) tb.append(h("tr", {}, h("td", {}, h("b", {}, g.name)),
     h("td", { class: "mono" }, String(g.count)), h("td", { class: "muted" }, (GROUP_HELP[g.name] || (() => ""))(p))));
   $("patTotal").textContent = `· ${p.total} in all`;
   $("patCache").textContent = p.eroslink_cache ? `${p.eroslink_cache.path} (${p.eroslink_cache.exists ? p.eroslink_cache.files + " files" : "not created yet"})` : "";
@@ -683,6 +724,17 @@ async function loadPatterns() {
   (p.notes || []).forEach((n) => notes.append(h("li", {}, n)));
   $("patNotesBox").hidden = !(p.notes || []).length;
 }
+
+$("sharedGet").addEventListener("click", async () => {
+  const b = $("sharedGet");
+  b.disabled = true; $("sharedState").textContent = "Downloading from the Internet Archive…";
+  const r = await api("/api/patterns/shared", {});
+  b.disabled = false;
+  $("sharedState").textContent = r.ok
+    ? `${r.data.count} routines added. Load patterns & settings for the remote; in the player, disconnect and connect the box.`
+    : (r.data.error || "the download failed");
+  loadPatterns();
+});
 
 // ---------------------------------------------------------------- M5 remote: ET-312 built-in modes
 async function loadEt312() {

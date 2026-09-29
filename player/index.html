@@ -17,11 +17,7 @@
 </nav>
 <header class="top">
   <div class="brand">Player <span id="conn" class="pill off" title="link to the engine process">offline</span></div>
-  <div class="outputs" role="radiogroup" aria-label="Output">
-    <button data-out="preview" role="radio">Preview</button>
-    <button data-out="stock" role="radio">Stock fw</button>
-    <button data-out="fork" role="radio">Fork fw</button>
-  </div>
+  <span id="boxPill" class="pill off" title="the box this player drives">no box</span>
   <div class="safety">
     <button id="arm" class="arm" aria-label="ARM" title="ARM: allow output; master slow-starts from 0">ARM</button>
     <button id="stop" class="stop" aria-label="STOP" title="STOP: immediate zero (disarm)">STOP</button>
@@ -66,11 +62,10 @@
     <div class="shape-row" id="shapeRow">
       <span class="lbl">Pulse shape <small id="shapeNote" class="note"></small></span>
       <div class="shapes" role="radiogroup" aria-label="Pulse shape (both channels)">
-        <button data-shape="rounded" role="radio" title="Half-sine phases (the fork's original shape)">Rounded</button>
-        <button data-shape="square" role="radio" title="Square phases, like the ET-312's drive. Bench only for now: its sharp edges tripped the over-current stop on skin (2026-09-26). Use Soft square on skin.">Square (bench)</button>
-        <button data-shape="soft" role="radio" title="Square with 20 µs sloped edges">Soft square</button>
-        <button data-shape="triangle" role="radio" class="v7" title="Linear up to the middle and down: a sharp peak (fork v7)">Triangle</button>
-        <button data-shape="taper" role="radio" class="v7" id="taperBtn" title="Rounded edges with a flat top: 0 % is rounded, higher is squarer (fork v7). Stops at 80 %: above it the edges are sharper than soft square's.">Taper</button>
+        <button data-shape="rounded" role="radio" title="Half-sine phases: the smoothest">Rounded</button>
+        <button data-shape="soft" role="radio" title="Square phases, like the ET-312's drive, with 20 µs sloped edges">Soft square</button>
+        <button data-shape="triangle" role="radio" class="v7" title="Linear up to the middle and down: a sharp peak">Triangle</button>
+        <button data-shape="taper" role="radio" class="v7" id="taperBtn" title="Rounded edges with a flat top: 0 % is rounded, higher is squarer. Stops at 80 %: above it the edges are sharper than soft square's.">Taper</button>
         <label class="taper v7" title="Taper: flat-top share of the pulse"><input id="taperAmt" type="range" min="0" max="80" step="10" value="50"> <output id="taperOut">50%</output></label>
       </div>
       <p class="fine">Same charge per pulse at any shape: switching never jumps the strength.</p>
@@ -108,8 +103,8 @@
     <div class="note" id="blockedNote"></div>
     <p class="fine">A channel routed to an electrode without a pad stays silent: an open route makes the box's
       drive climb until its over-current stop latches.</p>
-    <p class="fine">▼ marks the leading end (cathodic first in firmware convention). Which physical terminal is truly
-      negative-first is confirmed on the bench (firmware TEST-PLAN step 5); the swap itself is real either way.</p>
+    <p class="fine">▼ marks the leading pad: negative in the first, stronger half of every pulse, where the sensation
+      is strongest. ⇄ swaps which pad leads.</p>
   </section>
 
   <section class="card channel ch-a" id="chA">

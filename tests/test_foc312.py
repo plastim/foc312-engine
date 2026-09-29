@@ -389,34 +389,46 @@ async def test_deadman_when_the_page_goes_quiet(tmp_path):
     box.stop()
 
 
-# ---------------------------------------------------------------- stock firmware greying
+# ---------------------------------------------------------------- stock firmware: not played
 
 @run_async
-async def test_stock_firmware_greys_routing(tmp_path):
+async def test_stock_firmware_is_not_played(tmp_path):
     box, eng = await box_engine(tmp_path, fork=False, deadman_silence_s=5.0)
     run = Foc312Runner(eng, make_config())
-    assert run.outputs_available() == {"preview": True, "stock": True, "fork": False}
+    assert run.outputs_available() == {"preview": True, "fork": False}
     with pytest.raises(Foc312Error, match="fork firmware"):
         await run.set_output("fork")
-    await run.set_output("stock")
-    caps = run.capabilities()
-    assert caps == {"routing": False, "polarity": False, "shape": False, "note": "needs fork firmware",
-                    "pulse_shape": False, "pulse_shape_note": "needs fork firmware v2", "shapes_v7": False}
-    with pytest.raises(Foc312Error, match="v2"):
-        run.set_shape("square")
-    with pytest.raises(Foc312Error):
-        run.set_route(0, 23)
-    run.set_levels(0.5, 0.5)
-    await pump(run, 0.2)
-    assert eng.mode == "fourphase"
-    assert not box.axis(F.AXIS_BIPHASIC_A_ROUTE), "no fork axes to a stock box"
+    with pytest.raises(Foc312Error, match="output must be"):
+        await run.set_output("stock")
+    with pytest.raises(Foc312Error, match="fork firmware"):
+        run.arm()
+    await run.start()
+    await asyncio.sleep(0.1)
+    assert run.output == "preview", "a stock box is never picked"
+    await run.stop()
+    await eng.stop()
+    box.stop()
+
+
+@run_async
+async def test_a_fork_box_is_picked_by_itself(tmp_path):
+    box, eng = await box_engine(tmp_path, fork=True, deadman_silence_s=5.0)
+    run = Foc312Runner(eng, make_config())
+    assert run.output == "preview"
+    await run.start()
+    for _ in range(50):
+        if run.output == "fork":
+            break
+        await asyncio.sleep(0.02)
+    assert run.output == "fork" and not eng.status()["armed"]
+    await run.stop()
     await eng.stop()
     box.stop()
 
 
 def test_preview_has_no_device_and_cannot_arm():
     run = Foc312Runner()
-    assert run.outputs_available() == {"preview": True, "stock": False, "fork": False}
+    assert run.outputs_available() == {"preview": True, "fork": False}
     assert run.capabilities()["routing"] is True
     with pytest.raises(Foc312Error):
         run.arm()

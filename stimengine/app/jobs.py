@@ -61,6 +61,8 @@ class Job:
             self._add(raw.rstrip("\n").split("\r")[-1])
         self.rc = self.proc.wait()
         self.state = "ok" if self.rc == 0 else "failed"
+        # a plain last line: esptool's own ends at "Hard resetting via RTS pin...", which doesn't read as done
+        self._add("Done." if self.rc == 0 else f"Failed (exit code {self.rc}).")
         if self.on_done is not None:
             try:
                 self.on_done(self)

@@ -33,23 +33,23 @@ def build(engine_cfg: dict, m5_cfg: dict, foc312_state: dict | None = None) -> d
     else:
         wifi = m5_cfg.get("wifi") or {}
         if not wifi.get("ssid"):
-            raise ConfigError("config/m5.toml: [wifi] ssid is missing")
+            raise ConfigError("the house Wi-Fi name is empty: fill it in, or use the remote's own Wi-Fi")
         wifi_out = {"mode": "house", "ssid": str(wifi["ssid"]), "password": str(wifi.get("password", ""))}
     boxes = []
-    for b in m5_cfg.get("box") or []:
+    for n, b in enumerate(m5_cfg.get("box") or [], 1):
         # on the house network a box is found by its address; on the remote's own network by its Wi-Fi MAC (or,
         # with a single box and no MAC, as whichever box joined)
         if not direct and not b.get("host"):
-            raise ConfigError(f"config/m5.toml: box {b.get('name', '?')!r} has no host")
-        box = {"name": str(b.get("name") or b.get("host") or b.get("mac") or "box")[:24],
+            raise ConfigError(f"box {b.get('name', '?')!r} needs its house address (house Wi-Fi mode)")
+        box = {"name": str(b.get("name") or f"box {n}")[:24],             # what the remote shows: never a MAC
                "host": str(b.get("host", "")), "port": int(b.get("port", 55533))}
         if b.get("mac"):
             box["mac"] = _mac(b["mac"], box["name"])
         boxes.append(box)
     if not boxes:
-        raise ConfigError("config/m5.toml: at least one [[box]] is needed")
+        raise ConfigError("add at least one box")
     if direct and len(boxes) > 1 and not all("mac" in b for b in boxes):
-        raise ConfigError("config/m5.toml: with [direct] and several boxes, every box needs its Wi-Fi mac")
+        raise ConfigError("on the remote's own Wi-Fi, every box needs its MAC")
     pads = (foc312_state or {}).get("pads") or [True, True, True, True]
     return {
         "format": FORMAT,
@@ -74,18 +74,18 @@ def direct_network(m5_cfg: dict) -> dict | None:
         return None
     ssid, pw, ch = str(d.get("ssid", "")), str(d.get("password", "")), int(d.get("channel", 6))
     if not 1 <= len(ssid.encode()) <= 32:
-        raise ConfigError("config/m5.toml: [direct] ssid must be 1..32 bytes")
+        raise ConfigError("the remote's network name must be 1 to 32 characters")
     if not 8 <= len(pw.encode()) <= 63:       # WPA2: the box refuses open networks
-        raise ConfigError("config/m5.toml: [direct] password must be 8..63 characters")
+        raise ConfigError("the remote's network password must be 8 to 63 characters")
     if not 1 <= ch <= 11:
-        raise ConfigError("config/m5.toml: [direct] channel must be 1..11")
+        raise ConfigError("the channel must be 1 to 11")
     return {"ssid": ssid, "password": pw, "channel": ch}
 
 
 def _mac(text: str, name: str) -> str:
     parts = str(text).replace("-", ":").lower().split(":")
     if len(parts) != 6 or not all(len(p) == 2 and all(c in "0123456789abcdef" for c in p) for p in parts):
-        raise ConfigError(f"config/m5.toml: box {name!r} mac {text!r} is not aa:bb:cc:dd:ee:ff")
+        raise ConfigError(f"box {name!r}: the MAC {text!r} should look like aa:bb:cc:dd:ee:ff")
     return ":".join(parts)
 
 

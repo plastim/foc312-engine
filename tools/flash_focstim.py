@@ -9,7 +9,7 @@ v1.66 qt_ui/focstim_flash_dialog.py with extra refusals.
     python firmware/flash.py <file.hex> --dry-run            # hash and address checks only, no serial
 
 Rules (CLAUDE.md, notes/handoff-foc312.md): flash only on PlaStim's go for that flash; stop the engine and close restim
-first (COM13 has one owner); keep firmware/release/focstim_v4_firmware_v1.3.2_stock.hex to restore; run the
+first (COM13 has one owner); stock firmware to restore comes from the hub (Check for updates); run the
 one-resistor check before a body. If the bootloader can't be entered, hold the STM32 boot button while switching
 the box on and run it again (the tool then finds the bootloader already active).
 
@@ -31,7 +31,6 @@ PRODUCT_ID_G473 = 0x469
 FLASH_KB = 256
 # restim's allowed ranges (both banks of the G473's 256 KB dual-bank flash)
 ALLOWED = ((0x0800_0000, 0x0802_0000), (0x0804_0000, 0x0806_0000))
-RESTORE_HEX = Path(__file__).resolve().parent / "release" / "focstim_v4_firmware_v1.3.2_stock.hex"
 
 
 def log(msg: str) -> None:
@@ -186,7 +185,7 @@ def flash(port: str, ih, segs, backup: Path | None = None) -> None:
                 break
         else:
             raise SystemExit(f"VERIFY FAILED three times. The bootloader is still active: run this again "
-                             f"(or flash {RESTORE_HEX.name} to restore stock).")
+                             f"(or restore stock: the hub's Boxes tab, Check for updates, Stock FOC-Stim, Download).")
         log("verified; starting the new image")
         stm32.go(0x0800_0000)
 
@@ -220,8 +219,6 @@ def main() -> None:
     if not args.dry_run and not args.sha256:
         raise SystemExit("REFUSED: pass --sha256 <expected> (the hash recorded for this build) to flash")
     ih, segs = check_hex(args.hex, args.sha256)
-    if not RESTORE_HEX.is_file():
-        log(f"WARNING: the stock restore image {RESTORE_HEX} is missing")
     if args.dry_run:
         log("dry run: file checks passed; nothing sent")
         return

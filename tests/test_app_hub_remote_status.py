@@ -90,10 +90,10 @@ def test_saving_keeps_passwords_left_empty_and_writes_valid_toml(m5files):
 
 
 @pytest.mark.parametrize("change, message", [
-    ({"direct": {"enabled": True, "ssid": "stim-remote", "password": "short", "channel": 6}}, "8..63"),
-    ({"boxes": [{"name": "x", "mac": "not-a-mac"}]}, "not aa:bb"),
+    ({"direct": {"enabled": True, "ssid": "stim-remote", "password": "short", "channel": 6}}, "8 to 63"),
+    ({"boxes": [{"name": "x", "mac": "not-a-mac"}]}, "should look like aa:bb"),
     ({"direct": {"enabled": False}, "wifi": {"ssid": "house"}, "boxes": [{"name": "x", "mac": "aa:bb:cc:dd:ee:ff"}]},
-     "has no host"),                                                  # house Wi-Fi: a box needs its address
+     "house address"),                                                  # house Wi-Fi: a box needs its address
 ])
 def test_settings_the_remote_could_not_use_are_refused(m5files, change, message):
     before = m5files.cfg.read_text(encoding="utf-8")
@@ -107,7 +107,7 @@ def test_settings_the_remote_could_not_use_are_refused(m5files, change, message)
 def test_no_settings_file_yet(m5files):
     m5files.cfg.unlink()
     d = m5settings.view()
-    assert d["missing"] and d["boxes"] == [] and d["build_error"] and not d["direct"]["enabled"]
+    assert d["missing"] and d["boxes"] == [] and d["build_error"] and d["direct"]["enabled"]   # the recommended mode first
 
 
 # ---- last load ---------------------------------------------------------------------------------------------------------
@@ -205,7 +205,7 @@ FOC = {"output": "fork", "pattern": {"id": "builtin:waves", "name": "Waves"}, "l
 
 def test_status_summary():
     s = status.summarize(STATUS, TELE, FOC, running=True, port="COM17", trip=None)
-    assert s["firmware"] == "1.3.2 (main) · PlaStim fork v8" and s["state"] == "running"
+    assert s["firmware"] == "1.3.2 (main) · PlaStim firmware v8" and s["state"] == "running"
     assert (s["level_a"], s["level_b"], s["master"], s["ma"]) == (25, 40, 80, 50)
     assert (s["peak_ma_a"], s["peak_ma_b"]) == (12.1, 30.1)       # the smaller electrode of each channel's pair
     assert (s["battery"], s["pulse_hz"], s["box_knob"]) == (87, 163.2, 40) and s["warnings"] == []

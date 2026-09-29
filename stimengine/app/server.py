@@ -35,6 +35,7 @@ import aiohttp
 from aiohttp import web
 
 from ..control.origin import origin_guard
+from ..et312 import shared_routines
 from . import devices, firmware, m5settings, status, updates
 from .engine_proc import EngineProc
 from .jobs import ROOT, JobBusy, JobManager
@@ -51,6 +52,20 @@ EXTRACT_MAX_BYTES = 256 * 1024       # an ET-312 image is 16 KB (.bin) or ~45 KB
 
 def _err(msg: str, status: int = 400) -> web.Response:
     return web.json_response({"ok": False, "error": msg}, status=status)
+
+
+def _record_remote_flash(job) -> None:
+    """After a good remote flash: remember the image by the remote's serial, so Detect can show its firmware."""
+    if job.state != "ok" or "--port" not in job.cmd:
+        return
+    port, path = job.cmd[job.cmd.index("--port") + 1], Path(job.cmd[-1])
+    for e in firmware.load(firmware.REMOTE_MANIFEST) + firmware.updater().cached("remote"):
+        where = Path(e["path"]) if e.get("path") else firmware.REMOTE_MANIFEST.parent / e.get("file", "")
+        if where.resolve() == path.resolve():
+            v = str(e.get("version") or "")
+            title = e["name"] if not v or v in e["name"] else f"{e['name']} {v}"
+            devices.record_flash(port, f"{title} (flashed from this PC)")
+            return
 
 
 async def _body(req: web.Request) -> dict:
@@ -92,8 +107,10 @@ class Hub:
         r.add_get("/api/remote/patterns", self.h_remote_patterns)
         r.add_get("/api/et312", self.h_et312)
         r.add_post("/api/et312/extract", self.h_et312_extract)
+        r.add_post("/api/patterns/shared", self.h_shared_routines)
         # a finished load records what the remote got, so the page can say whether it still matches
         self.jobs.on_done["remote-load"] = m5settings.record_job
+        self.jobs.on_done["flash-remote"] = _record_remote_flash
         r.add_get("/", self.h_index)
         if APP_DIR.is_dir():
             r.add_static("/static/", APP_DIR, show_index=False)
@@ -175,7 +192,7 @@ class Hub:
     # ---- firmware updates (GitHub releases, signed by PlaStim): never automatic, downloading is not flashing ----
     async def h_updates(self, _req: web.Request) -> web.Response:
         u = firmware.updater()
-        return web.json_response({"box": u.last.get("box"), "remote": u.last.get("remote")})
+        return web.json_response({"box": u.last_view("box"), "remote": u.last_view("remote")})
 
     async def h_updates_check(self, req: web.Request) -> web.Response:
         kind = str((await _body(req)).get("kind", ""))
@@ -397,7 +414,16 @@ class Hub:
                                    "files": len(list(cache.glob("*/*.elk"))) if cache.is_dir() else 0},
                 "elk_dir": {"path": elk_dir, "exists": bool(elk_dir) and Path(elk_dir).is_dir()},
                 "ours_dir": {"path": str(ours_dir), "exists": ours_dir.is_dir()},
+                "shared": {"path": str(shared_routines.folder()), "count": shared_routines.count()},
                 "builtin": self._et312_view(data)}
+
+    async def h_shared_routines(self, _req: web.Request) -> web.Response:
+        """Fetch the ET-312 shared routines (ErosTek's free 2011 zip) from the Internet Archive, checked by SHA-256."""
+        try:
+            n = await asyncio.get_running_loop().run_in_executor(None, shared_routines.fetch)
+        except shared_routines.SharedRoutinesError as exc:
+            return _err(str(exc), 502)
+        return web.json_response({"ok": True, "count": n, "path": str(shared_routines.folder())})
 
     async def h_remote_patterns(self, _req: web.Request) -> web.Response:
         try:

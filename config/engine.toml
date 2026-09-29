@@ -1,4 +1,7 @@
-# Captured from $HOME/Local/restim/restim.ini on 2026-08-20 (restim ~v1.62 config)
+# The engine's settings. Most people only ever change two things here:
+#   [et312] elk_dir                  a folder of your own .elk routines (INSTALL.md, step 8)
+#   [signal] waveform_amplitude_amps the current cap; the hub's Settings tab changes it for you
+# Everything else has working defaults. Save the file and restart the hub after a change.
 
 [device]
 transport = "serial"        # "serial" | "tcp"
@@ -7,7 +10,7 @@ serial_baud = 115200
 tcp_host = "192.168.1.50"
 tcp_port = 55533
 firmware_pinned = "1.3.2"
-start_imu = false            # IMU stream off by default (PlaStim 2026-08-20): 103 msg/s, floods the WiFi bridge
+start_imu = false            # the box's motion sensor stream: off (103 messages/s would flood its Wi-Fi link)
 
 [signal]
 mode = "threephase"         # "threephase" | "fourphase"
@@ -25,7 +28,7 @@ center = -0.3
 neutral = -2.1
 right = 0.3
 
-[calibration.fourphase]     # restim v1.66 schema is a/b/c/d + center_reduction; the tester's old ini had center/a/b/c (stale) -> REDO in v1.66 (TP-0b)
+[calibration.fourphase]     # restim's four-phase calibration (dB); only for restim-style playback
 a = 0.3
 b = 1.1
 c = -0.3
@@ -44,7 +47,7 @@ websocket_port = 12346
 udp_port = 12347
 tcp_port = 12347
 
-# T-code axis map (restim's ports + the tester's restim.ini ranges). T-code 0..1 maps linearly onto [min,max].
+# T-code axis map (restim's ports and ranges), for scripts and players that speak T-code. 0..1 maps onto [min,max].
 # Targets: alpha beta gamma api_volume carrier pulse_frequency pulse_width pulse_interval_random
 #          pulse_rise_time e1 e2 e3 e4. Add/override entries here; unknown codes are ignored.
 [tcode.axes]
@@ -65,14 +68,14 @@ E4 = { target = "e4", min = 0.0, max = 1.0 }
 [api]
 http_port = 8321
 
-[foc312]            # the ET-312 emulator app (foc312/), served by the engine process on its own port
+[foc312]            # the player (the ET-312 emulator), served by the engine process on its own port
 port = 8322
 enabled = true
 # .elk folder and monophasic shape come from [et312] (optional): elk_dir (your own .elk files; none by default),
 # monophasic_asymmetry (1..4, default 3: return-phase width / lead width for the 312's monophasic pulses)
 
 [content]
-in_process = false  # worker processes, pre-warmed off-loop at start (2026-08-20)
+in_process = false  # content analysis in worker processes
 
 [et312]
 elk_dir = ""        # your own .elk folder (optional)

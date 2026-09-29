@@ -79,14 +79,12 @@ function onState(s, full) {
   while (hist.length && hist[0][0] < s.t - HIST_S - 0.2) hist.shift();
   if (full && s.advanced_ranges) buildAdvanced(s.advanced_ranges);
 
-  // outputs
-  document.querySelectorAll(".outputs button").forEach((b) => {
-    const m = b.dataset.out;
-    b.setAttribute("aria-checked", String(s.output === m));
-    b.disabled = !s.outputs_available[m];
-    b.title = s.outputs_available[m] ? "" : (m === "fork" ? "needs a box running the fork firmware" : "needs a device link");
-  });
-  const eng = s.engine;
+  // the box: plays only on the PlaStim firmware (the runner picks it by itself once the box is connected)
+  const eng = s.engine, pill = $("boxPill");
+  const live = !!(eng && eng.running && eng.link);
+  pill.textContent = s.output === "fork" ? "PlaStim firmware ✓" : live ? "box needs the PlaStim firmware" : "no box";
+  pill.className = "pill " + (s.output === "fork" ? "on" : live ? "bad" : "off");
+  pill.title = s.output === "fork" ? "" : live ? "flash it on the hub's Boxes tab" : "connect a box in the hub";
   const arm = $("arm");
   arm.disabled = s.output === "preview" || !eng || !eng.running;
   arm.classList.toggle("armed", !!(eng && eng.armed));
@@ -108,7 +106,6 @@ function onState(s, full) {
     parts.push(`current <b class="ch-a">A ${ma(meas[0])}</b> <b class="ch-b">B ${ma(meas[1])}</b>`);
     parts.push(`<small class="muted">asked ${(eng.amps || []).map(ma).join(" / ")}</small>`);
   }
-  parts.push(`output <b>${s.output}</b>`);
   $("status").innerHTML = parts.join(" · ");
   if (s.error) showError(s.error);
 
@@ -196,7 +193,6 @@ $("ramp").addEventListener("click", () => send("ramp"));
 $("skipRamp").addEventListener("change", (e) => send("skip_ramp", { on: e.target.checked }));
 $("arm").addEventListener("click", () => send("arm"));
 $("stop").addEventListener("click", () => send("stop"));
-document.querySelectorAll(".outputs button").forEach((b) => b.addEventListener("click", () => send("output", { mode: b.dataset.out })));
 document.querySelectorAll(".chsel button").forEach((b) => b.addEventListener("click", () => {
   editCh = b.dataset.ch; pendingSocket = null; routeHint();
   document.querySelectorAll(".chsel button").forEach((x) => x.setAttribute("aria-checked", String(x === b)));
@@ -436,7 +432,7 @@ function drawGlyph(canvas, c, color) {
   ctx.fill(); ctx.stroke();
   const [x] = parseRoute(c.route_sent) || [0];
   ctx.fillStyle = css("--muted");
-  ctx.fillText(`lead: E${x} (cathodic, down)`, pad, h - 4);
+  ctx.fillText(`lead: E${x}`, pad, h - 4);
   const t = `${w1} µs + ${Math.round(w2)} µs · equal charge`;
   ctx.fillText(t, w - pad - ctx.measureText(t).width, 12);
 }

@@ -19,6 +19,7 @@ import base64
 import hashlib
 import json
 import os
+import re
 import shutil
 import time
 import urllib.error
@@ -166,6 +167,15 @@ def _asset(release: dict, name: str) -> dict | None:
     return next((a for a in release.get("assets", []) if a.get("name") == name), None)
 
 
+# what the hub calls a downloaded release (one name for the firmware everywhere: devices, cards, guide)
+RELEASE_NAMES = {"box": "PlaStim firmware", "remote": "PlaStim remote firmware"}
+
+
+def _version_key(v: str) -> tuple:
+    """'9' < '10', 'v1.02' < 'v1.10': numeric parts compared as numbers."""
+    return tuple(int(x) if x.isdigit() else 0 for x in re.split(r"[.\-_]", v.lstrip("vV")))
+
+
 def summarize(release: dict) -> dict:
     """What the hub shows for one PlaStim release, before anything is downloaded."""
     return {"tag": release.get("tag_name", ""), "name": release.get("name") or release.get("tag_name", ""),
@@ -196,6 +206,18 @@ class Updater:
             out["stock"] = self.check_stock()
         self.last[kind] = out
         return out
+
+    def last_view(self, kind: str) -> dict | None:
+        """The last check's result (no network), with "downloaded" read from the cache again."""
+        r = self.last.get(kind)
+        if not r:
+            return None
+        r = dict(r, releases=[dict(x, downloaded=self._cached_version_dir(kind, x.get("tag", "")) is not None)
+                              for x in r.get("releases") or []])
+        st = r.get("stock")
+        if st and st.get("tag"):
+            r["stock"] = dict(st, downloaded=(self.cache / "stock" / st["tag"] / STOCK_ASSET).is_file())
+        return r
 
     def check_stock(self) -> dict:
         try:
@@ -286,11 +308,12 @@ class Updater:
             if m["product"] != PRODUCTS[kind]:
                 raise UpdateError(f"cached release is for {m['product']!r}")
             verify_image(m, folder / m["file"])
-            e.update(id=f"release-{m['version']}", name=f"PlaStim {PRODUCTS[kind]} {m['version']}",
-                     version=str(m["version"]), sha256=str(m["sha256"]).lower(), file=m["file"],
-                     notes=str(m.get("notes", "")), recommended=False, path=str(folder / m["file"]))
+            ver = str(m["version"])
+            e.update(id=f"release-{ver}", name=f"{RELEASE_NAMES[kind]} {ver if ver.startswith('v') else 'v' + ver}",
+                     version=ver, sha256=str(m["sha256"]).lower(), file=m["file"],
+                     notes=str(m.get("notes") or ""), recommended=False, path=str(folder / m["file"]))
         except (UpdateError, OSError, KeyError) as exc:
-            e.update(id=f"release-{folder.name}", name=f"PlaStim {PRODUCTS[kind]} {folder.name}", version=folder.name,
+            e.update(id=f"release-{folder.name}", name=f"{RELEASE_NAMES[kind]} {folder.name}", version=folder.name,
                      sha256="", file="", notes="", recommended=False, signed=False, error=f"not verified: {exc}")
         return e
 
@@ -311,6 +334,9 @@ class Updater:
             for d in sorted(base.iterdir(), reverse=True):
                 if d.is_dir() and not d.name.endswith(".partial"):
                     out.append(self._entry(kind, d))
+            good = [e for e in out if e.get("signed") and not e.get("error")]
+            if good:                                    # the newest verified release is the one to use
+                max(good, key=lambda e: _version_key(e["version"]))["recommended"] = True
         if kind == "box" and (self.cache / "stock").is_dir():
             for d in sorted((self.cache / "stock").iterdir(), reverse=True):
                 if (d / STOCK_ASSET).is_file():

@@ -44,7 +44,7 @@ before opening restim, and the other way round.
 - **Steady sensation.** The strength holds as skin and pads change, instead of creeping up as you sweat or fading as
   a pad dries.
 - **Wiring as a setting.** Move a channel to another pair of pads, share a pad between both channels, or flip a
-  channel's polarity ([why](#why-flip-the-polarity--a--b)), instantly, with nothing to unplug.
+  channel's polarity ([why](#why-flip-the-polarity)), instantly, with nothing to unplug.
 - **Shapes and balance.** Pulse shapes the 312 can't make. Every pulse is charge-balanced, and the output
   transformers block DC entirely.
 - **It tells you what happened.** Live measured current, and a trip report when the box's protection stops the
@@ -76,7 +76,7 @@ That's more contacts than a two-channel box can use at once, which is why PlaSti
   concentrates changes: towards the smaller electrode. On a voltage-driven box, adding area also changes **how much**
   current flows, so focus and strength shift together.
 - **Polarity becomes a real control.** On a Pinnacle-to-base-ring channel, a flip moves the sensation from an
-  intense corona focus to a harder shaft sensation ([why](#why-flip-the-polarity--a--b)).
+  intense corona focus to a harder shaft sensation ([why](#why-flip-the-polarity)).
 
 ### Limitations
 
@@ -173,7 +173,7 @@ The engine enforces its own limits on top of the box's: a hard current cap, a sl
 firmware keeps the FOC-Stim's own safety envelope (self-test, per-pulse over-current stop, 0.2 A body cap, 4 s comms
 keepalive). **This is not a medical device. You use it at your own risk.**
 
-## Why flip the polarity (⇄ A / ⇄ B)
+## Why flip the polarity
 
 Each channel has a direction: which of its two pads is negative during the first, stronger half of every pulse.
 **The sensation is strongest under the pad that is negative in that first half.** So the player's **⇄ A** and
@@ -192,11 +192,10 @@ The player and the remote use three kinds of patterns:
 
 - **The ET-312's 18 built-in modes** (Waves, Stroke, Climb, ...). They belong to ErosTek and are **not included**:
   extract them from your own ET-312's firmware file on the hub's **M5 remote** tab (the data stays on your computer).
-- **ErosLink routines** (`.elk` files): point the app at a folder of them. A good start is the 78
-  **ET-312 shared routines** that ErosTek gave away in 2011,
-  [archived by the Internet Archive](https://web.archive.org/web/2011id_/http://www.erostek.com/Erostek312_routines.zip)
-  ([the original post](https://web.archive.org/web/20111208144808/http://blog.erostek.com/2011/01/10/extra-eroslink-routines-free/));
-  see [INSTALL.md, step 8](INSTALL.md#8-patterns).
+- **ErosLink routines** (`.elk` files). A good start is the **ET-312 shared routines** that ErosTek gave away in
+  2011 ([the original post](https://web.archive.org/web/20111208144808/http://blog.erostek.com/2011/01/10/extra-eroslink-routines-free/)):
+  one button in the hub fetches them from the Internet Archive. Or point the app at a folder of your own; see
+  [INSTALL.md, step 8](INSTALL.md#8-patterns).
 - **PlaStim routines** in `routines/` (coming).
 
 Not affiliated with or endorsed by ErosTek. ET-312 is a trademark of its owner.

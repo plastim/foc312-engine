@@ -1,13 +1,15 @@
 """foc312: the ET-312 mode engine driven live, for the foc312 web app (foc312/, served on :8322).
 
 One Foc312Runner per engine process. It steps an ET312Engine at the box's own 244 Hz tick (catching up in
-~20 ms slices), keeps a 10 s history for the page's strips, and writes the frames to one of three outputs:
+~20 ms slices), keeps a 10 s history for the page's strips, and writes the frames to one of two outputs:
 
-  preview  nothing leaves the process (the default; works with no device at all)
-  stock    stock FOC-Stim firmware: mapping.map_frame -> apply_to_engine (sine bursts; no routing / polarity /
-           pulse shape, those controls are refused with "needs fork firmware")
-  fork     the stim-engine fork firmware, OUTPUT_BIPHASIC_PAIRS: per channel intensity, rate, width, asymmetry and
-           route through Engine.set_biphasic (device/fork.py, firmware/NOTES.md §8)
+  preview  nothing leaves the process (no box, or a box without the PlaStim firmware; nothing can be armed)
+  fork     the PlaStim fork firmware, OUTPUT_BIPHASIC_PAIRS: per channel intensity, rate, width, asymmetry and
+           route through Engine.set_biphasic (device/fork.py, firmware/NOTES.md §8). Chosen by itself as soon as
+           the engine has a box running the fork.
+
+Stock FOC-Stim firmware is not played (PlaStim 2026-09-29: the player only uses the new firmware); the hub
+flashes the fork.
 
 Safety: the runner only ever writes with source="internal", so its 50 Hz writes never feed the engine's deadman.
 The page's heartbeat (heartbeat()) is the control input; if the page goes quiet for deadman_silence_s the engine
@@ -42,13 +44,13 @@ from ..device import fork as F
 from . import fwdata
 from . import modes as M
 from .engine import AdvancedParams, BuiltinModesUnavailable, ET312Engine, ET312Frame
-from .mapping import MappingConfig, apply_to_engine, map_frame
 from .vm import TICK_HZ
 
 logger = logging.getLogger("engine.foc312")
 
 DEFAULT_ELK_DIR = ""          # your own .elk folder: [et312] elk_dir in config/engine.toml (none by default)
-OUTPUTS = ("preview", "stock", "fork")
+OUTPUTS = ("preview", "fork")
+NEEDS_FORK = "this box needs the PlaStim fork firmware: flash it on the hub's Boxes tab"
 MEASURED_STALE_S = 1.5          # a measured current older than this shows as unknown
 LOOP_S = 0.02                 # wake every 20 ms, run the ticks that are due (244 Hz / 50 Hz ~ 5 per wake)
 HIST_S = 10.0
@@ -117,12 +119,12 @@ def pattern_catalog(elk_dir: str | Path | None) -> tuple[list[dict], dict[str, d
                 builtins.append({"id": f"builtin:{vkey}", "name": vname, "description": vdesc,
                                  "disabled": False, "note": "PlaStim variant"})
     elk_by_id: dict[str, dict] = {}
-    bundled, designer, user = [], [], []
+    bundled, designer, shared, user = [], [], [], []
     err = None
     mod = _elk_module()
-    if mod is not None and hasattr(mod, "list_routines") and elk_dir:
-        try:
-            routines = list(mod.list_routines(str(elk_dir)) or [])
+    if mod is not None and hasattr(mod, "list_routines"):
+        try:     # the ErosLink cache (its own routines, the shared routines) even without a folder of your own
+            routines = list(mod.list_routines(str(elk_dir) if elk_dir else None) or [])
         except Exception as exc:  # noqa: BLE001
             routines, err = [], f".elk list failed: {exc}"
         for r in routines:
@@ -136,6 +138,8 @@ def pattern_catalog(elk_dir: str | Path | None) -> tuple[list[dict], dict[str, d
                 bundled.append(item)
             elif str(r.get("source", "")).lower() == "designer":
                 designer.append(item)
+            elif str(r.get("source", "")).lower() == "shared":
+                shared.append(item)
             else:
                 user.append(item)
     groups = []
@@ -145,6 +149,8 @@ def pattern_catalog(elk_dir: str | Path | None) -> tuple[list[dict], dict[str, d
         groups.append({"label": "Built-in modes", "items": builtins})
     if designer:
         groups.append({"label": "ErosLink examples", "items": designer})
+    if shared:
+        groups.append({"label": "ET-312 shared routines", "items": shared})
     if user or mod is not None:
         groups.append({"label": "Your routines", "items": user})
     return groups, elk_by_id, err
@@ -164,7 +170,6 @@ class Foc312Runner:
         self.elk_dir = str(et.get("elk_dir", DEFAULT_ELK_DIR))
         self.monophasic_asymmetry = float(min(4.0, max(1.0, float(et.get("monophasic_asymmetry", 3.0)))))
         self.skip_mode_ramp = bool(et.get("skip_mode_ramp", False))   # see ET312Engine.skip_mode_ramp
-        self.mapping_cfg = MappingConfig.from_config(cfg) if cfg else MappingConfig()
         self.master = 1.0                   # the player's Master: ARM ramps up to it (was always 1.0)
         self.levels = [0.0, 0.0]            # knobs start at zero, like the box; always independent (PlaStim: both
                                             # together = the V4's hardware knob, the master volume)
@@ -218,6 +223,11 @@ class Foc312Runner:
 
     async def _run(self) -> None:
         while self._running:
+            if self.output == "preview" and self._engine_live() and self.engine.fork_firmware:
+                try:
+                    await self.set_output("fork")          # a PlaStim box: play on it (disarmed until ARM)
+                except Exception as exc:  # noqa: BLE001
+                    logger.warning("foc312: fork output not selected (%s)", exc)
             try:
                 self.advance()
             except Exception:  # noqa: BLE001 - keep animating; a write failure faults the engine, not us
@@ -363,7 +373,7 @@ class Foc312Runner:
         except Exception as exc:  # noqa: BLE001
             logger.warning("foc312: saved routes/shape not restored (%s)", exc)
         out = st.get("output")
-        if out in ("stock", "fork"):
+        if out == "fork":
             try:
                 await self.set_output(out)        # disarmed; master stays 0 until the page's ARM
             except Exception as exc:  # noqa: BLE001
@@ -402,12 +412,10 @@ class Foc312Runner:
                 eng.set_biphasic(i, intensity=v["intensity"] * gain, rate_hz=v["rate_hz"], width_us=v["width_us"],
                                  asymmetry=v["asymmetry"], route=v["route_sent"], shape=self.shape,
                                  source="internal")
-        elif self.output == "stock" and eng.mode in ("threephase", "fourphase"):
-            apply_to_engine(eng, map_frame(self.frame, replace(self.mapping_cfg, geometry=eng.mode)), source="internal")
 
     def outputs_available(self) -> dict[str, bool]:
         live = self._engine_live()
-        return {"preview": True, "stock": live, "fork": live and bool(self.engine.fork_firmware)}
+        return {"preview": True, "fork": live and bool(self.engine.fork_firmware)}
 
     async def set_output(self, mode: str) -> None:
         if mode not in OUTPUTS:
@@ -422,16 +430,15 @@ class Foc312Runner:
         if not self._engine_live():
             raise Foc312Error("no device link: run the engine with a box (or --sim / --sim-fork)")
         if mode == "fork" and not eng.fork_firmware:
-            raise Foc312Error("needs fork firmware (not flashed on this box)")
+            raise Foc312Error(NEEDS_FORK)
         eng.disarm()
         self._quiet_others()
-        want = "biphasic" if mode == "fork" else (eng.mode if eng.mode in ("threephase", "fourphase") else "fourphase")
+        want = "biphasic"
         if eng.mode != want or not eng.signal_on_flag:
             if eng.signal_on_flag:
                 await eng.signal_off("foc312 output switch")
             await eng.signal_on(want)
-        if mode == "fork":
-            eng.set_api_volume(1.0, source="internal")   # under master, which is 0 until arm() slow-starts it
+        eng.set_api_volume(1.0, source="internal")       # under master, which is 0 until arm() slow-starts it
         self.output = mode
         self._write_outputs()
         self._setup_changed()
@@ -448,7 +455,7 @@ class Foc312Runner:
 
     def arm(self) -> None:
         if self.output == "preview":
-            raise Foc312Error("preview: nothing to arm (pick Stock or Fork output)")
+            raise Foc312Error(NEEDS_FORK if self._engine_live() else "no box connected: connect one in the hub")
         if not self._engine_live():
             raise Foc312Error("no device link")
         eng = self.engine
@@ -554,8 +561,6 @@ class Foc312Runner:
         self.et.start_ramp()
 
     def set_route(self, ch: int, code) -> int:
-        if self.output == "stock":
-            raise Foc312Error("routing needs fork firmware (stock firmware drives one field)")
         self.routes[ch] = F.validate_route(code)
         self._write_outputs()
         self._setup_changed()
@@ -567,8 +572,6 @@ class Foc312Runner:
     def swap(self) -> list[int]:
         """Swap A and B, like the M5 remote's swap: the pattern's two channels trade wire pairs, and each wire pair
         keeps its level (levels stay with the wires), so a swap never moves a high level onto the other pads."""
-        if self.output == "stock":
-            raise Foc312Error("routing needs fork firmware (stock firmware drives one field)")
         a, b = F.validate_route(self.routes[1]), F.validate_route(self.routes[0])
         self.routes[0], self.routes[1] = a, b
         self.levels[0], self.levels[1] = self.levels[1], self.levels[0]

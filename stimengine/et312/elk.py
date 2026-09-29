@@ -1286,7 +1286,7 @@ def _source_of(path: Path, cache: Path) -> str:
         rel = path.resolve().relative_to(cache.resolve())
     except (ValueError, OSError):
         return "user"
-    return rel.parts[0] if rel.parts and rel.parts[0] in ("bundled", "designer") else "user"
+    return rel.parts[0] if rel.parts and rel.parts[0] in ("bundled", "designer", "shared") else "user"
 
 
 def list_routines(folder: str | os.PathLike | None = None, *, cache_dir: str | os.PathLike | None = None,
@@ -1297,6 +1297,7 @@ def list_routines(folder: str | os.PathLike | None = None, *, cache_dir: str | o
       name, description   as ErosLink shows them
       source              "bundled"  - the CD's main routines (routines/*.elk, the ones PlaStim rates best)
                           "designer" - the CD's designer examples (routines/designer/*.elk)
+                          "shared"   - the ET-312 shared routines (shared_routines.py)
                           "user"     - files in `folder`
       bundled             True only for source == "bundled"
       path                what load() takes.  A file can hold several routines; then path is
@@ -1309,7 +1310,8 @@ def list_routines(folder: str | os.PathLike | None = None, *, cache_dir: str | o
     cache = Path(cache_dir) if cache_dir is not None else default_cache_dir()
     dirs: list[tuple[str, Path]] = []
     if include_bundled:
-        dirs += [("bundled", cache / "bundled"), ("designer", cache / "designer")]
+        dirs += [("bundled", cache / "bundled"), ("designer", cache / "designer"),
+                 ("shared", cache / "shared")]           # the ET-312 shared routines (shared_routines.py)
     if folder:                   # None or "" = no folder of your own (Path("") would be the current folder)
         dirs.append(("user", Path(folder)))
     out: list[dict] = []

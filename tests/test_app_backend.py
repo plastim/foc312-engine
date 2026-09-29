@@ -261,7 +261,7 @@ def test_jobs_api():
             await c.close()
         return one, all_, missing
     one, all_, missing = run(go())
-    assert one["state"] == "ok" and one["log"] == ["hi"] and one["kind"] == "test"
+    assert one["state"] == "ok" and one["log"] == ["hi", "Done."] and one["kind"] == "test"
     assert all_["jobs"][0]["id"] == job.id and missing == 404
 
 
@@ -346,7 +346,7 @@ def test_a_detected_kind_is_remembered_and_firmware_is_labelled(monkeypatch):
         return ("box", "1.3.2 (main) stim-engine biphasic-pairs v8") if port == "COM17" else ("remote", "stim-remote free 1 B")
     monkeypatch.setattr(devices, "probe", fake_probe)
     devs = run(devices.scan(set(), 1))
-    assert devs[0]["name"] == "box 2" and devs[0]["fw_fork"] == 8 and devs[0]["fw_label"] == "PlaStim fork v8"
+    assert devs[0]["name"] == "box 2" and devs[0]["fw_fork"] == 8 and devs[0]["fw_label"] == "PlaStim firmware v8"
     assert devs[1]["kind"] == "remote" and devs[1]["name"] == "M5 remote"
     # the next start (no cache, no probing) still knows them, on whatever port they come back
     devices._cache.clear()

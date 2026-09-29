@@ -209,7 +209,7 @@ class ET312Engine:
             mode = M.USER1
         elif not self.builtins_available and self._is_builtin(mode):
             raise BuiltinModesUnavailable(
-                "the ET-312 built-in modes need your own firmware data (see stimengine/et312/fwdata.py)")
+                "the ET-312 built-in modes need your own ET-312 firmware file (hub, M5 remote tab: Extract)")
         elif not (isinstance(mode, int) and M.USER1 <= mode <= M.USER7):
             self.routine = None
         self.mode = self._mode_num(mode)

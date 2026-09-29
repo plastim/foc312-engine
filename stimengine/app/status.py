@@ -66,7 +66,7 @@ def summarize(status: dict | None, tele: dict | None, foc: dict | None, *, runni
     out: dict = {"running": running, "port": port, "reachable": bool(status or foc), "warnings": [], "trip": trip}
     fw = tele.get("firmware")
     if fw and status.get("fork_firmware"):
-        fw = f"{fw} · PlaStim fork v{status.get('fork_version')}"
+        fw = f"{fw} · PlaStim firmware v{status.get('fork_version')}"
     elif fw:
         fw = f"{fw} · stock"
     out["firmware"] = fw

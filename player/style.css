@@ -66,9 +66,7 @@ small, .muted { color: var(--muted); }
 .pill { font-size: 12px; font-weight: 600; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--line); }
 .pill.on { color: var(--ok); border-color: var(--ok); }
 .pill.off { color: var(--muted); }
-.outputs { display: flex; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
-.outputs button { border: 0; border-radius: 0; padding: 6px 12px; }
-.outputs button[aria-checked="true"] { background: var(--ink); color: var(--bg); }
+.pill.bad { color: var(--warn); border-color: var(--warn); }
 .safety { display: flex; gap: 8px; }
 .arm { background: var(--card); border: 2px solid var(--arm); color: var(--arm); font-weight: 700; min-width: 72px; }
 .arm.armed { background: var(--arm); color: #fff; }
