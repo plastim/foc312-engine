@@ -1,6 +1,11 @@
 """The engine as a child process: `stimengine.tools.serve` for the box on one serial port (foc312 on :8322, the
 control API on :8321). Connecting starts it; disconnecting stops it the way Ctrl-C does (zero, signal stop, close),
-which releases the port, e.g. for flashing. Only one engine: one process owns a box."""
+which releases the port, e.g. for flashing. Only one engine: one process owns a box.
+
+After a FAULT (a box trip latches the box until it is power-cycled) the engine exits; this then asks the box every few
+seconds whether it answers (a cheap handshake, no engine, no session) and restarts the engine on the same port once
+it does. The player comes back with its setup (foc312-state.json): same pattern and routes, levels 0, NOT armed; the
+user arms again. Disconnect stops the waiting."""
 from __future__ import annotations
 
 import os
@@ -15,6 +20,9 @@ from typing import Callable
 from .jobs import ROOT
 
 STOP_WAIT_S = 5.0
+FAULT_RC = 3                        # serve's exit code after an engine fault (a box trip, a lost link)
+RECONNECT_EVERY_S = 3.0             # after a fault: ask the box every few seconds whether it answers again
+RECONNECT_WINDOW_S = 15 * 60        # and give up after this long
 API_STOP_URL = "http://127.0.0.1:8321/stop"      # the engine's own clean exit (as the supervisor stops it)
 
 
@@ -40,6 +48,8 @@ class EngineProc:
         self.port: str | None = None
         self.log: deque[str] = deque(maxlen=200)
         self.last_trip: dict | None = None      # the box's last over-current trip report (see _watch)
+        self.wanted_port: str | None = None     # the port the user connected (None after Disconnect)
+        self.reconnect_note: str | None = None  # while waiting for the box after a fault
         self._lock = threading.Lock()
 
     def running(self) -> bool:
@@ -52,21 +62,27 @@ class EngineProc:
         with self._lock:
             if self.running():
                 raise RuntimeError(f"the engine is already running on {self.port}: disconnect first")
-            env = dict(os.environ, PYTHONUNBUFFERED="1", PYTHONIOENCODING="utf-8")
-            # its own process group, so a CTRL_BREAK reaches only the engine (on POSIX: its own session, SIGINT).
-            # CTRL_BREAK needs a shared console, so no console window of its own unless the hub has none either
-            if sys.platform == "win32":
-                flags = subprocess.CREATE_NEW_PROCESS_GROUP | (0 if _has_console() else subprocess.CREATE_NO_WINDOW)
-                kw: dict = {"creationflags": flags}
-            else:
-                kw = {"start_new_session": True}
+            self.wanted_port = port
+            self._spawn(port, fresh=True)
+
+    def _spawn(self, port: str, fresh: bool) -> None:
+        """Start serve on `port` (the lock is held). fresh: a user Connect (clears the log and the trip report)."""
+        env = dict(os.environ, PYTHONUNBUFFERED="1", PYTHONIOENCODING="utf-8")
+        # its own process group, so a CTRL_BREAK reaches only the engine (on POSIX: its own session, SIGINT).
+        # CTRL_BREAK needs a shared console, so no console window of its own unless the hub has none either
+        if sys.platform == "win32":
+            flags = subprocess.CREATE_NEW_PROCESS_GROUP | (0 if _has_console() else subprocess.CREATE_NO_WINDOW)
+            kw: dict = {"creationflags": flags}
+        else:
+            kw = {"start_new_session": True}
+        if fresh:
             self.log.clear()
             self.last_trip = None
-            self.proc = subprocess.Popen(self.command(port), cwd=str(ROOT), env=env, stdout=subprocess.PIPE,
-                                         stderr=subprocess.STDOUT, stdin=subprocess.DEVNULL, text=True,
-                                         encoding="utf-8", errors="replace", bufsize=1, **kw)
-            self.port = port
-            threading.Thread(target=self._read, args=(self.proc,), daemon=True).start()
+        self.proc = subprocess.Popen(self.command(port), cwd=str(ROOT), env=env, stdout=subprocess.PIPE,
+                                     stderr=subprocess.STDOUT, stdin=subprocess.DEVNULL, text=True,
+                                     encoding="utf-8", errors="replace", bufsize=1, **kw)
+        self.port = port
+        threading.Thread(target=self._read, args=(self.proc,), daemon=True).start()
 
     def _read(self, proc: subprocess.Popen) -> None:
         assert proc.stdout is not None
@@ -76,6 +92,40 @@ class EngineProc:
             self._watch(line)
         rc = proc.wait()
         self.log.append(f"[engine exited, rc {rc}]")
+        port = self.wanted_port
+        if rc == FAULT_RC and port and proc is self.proc:
+            threading.Thread(target=self._reconnect, args=(port,), daemon=True).start()
+
+    def _box_answers(self, port: str) -> bool:
+        import asyncio
+        from .devices import probe_box
+        try:
+            return asyncio.run(probe_box(port)) is not None
+        except Exception:  # noqa: BLE001 - the port is gone while the box is off, busy, ...
+            return False
+
+    def _reconnect(self, port: str) -> None:
+        """After a fault: wait for the box to answer again (it is latched until power-cycled), then restart."""
+        deadline = time.monotonic() + RECONNECT_WINDOW_S
+        self.reconnect_note = "the box stopped (a trip?): switch it off and on; the engine reconnects by itself"
+        self.log.append(f"[waiting for the box on {port}: power-cycle it to reconnect]")
+        try:
+            while time.monotonic() < deadline:
+                time.sleep(RECONNECT_EVERY_S)
+                if self.wanted_port != port or self.running():
+                    return                                  # Disconnect, or someone connected meanwhile
+                if not self._box_answers(port):
+                    continue
+                with self._lock:
+                    if self.wanted_port != port or self.running():
+                        return
+                    self.log.append(f"[the box answers again on {port}: restarting the engine]")
+                    self._spawn(port, fresh=False)
+                return
+            self.log.append("[gave up waiting for the box: press Connect when it is back]")
+            self.wanted_port = None
+        finally:
+            self.reconnect_note = None
 
     def _watch(self, line: str) -> None:
         """Keep the box's trip report. The firmware sends it as debug strings, which the engine logs as
@@ -112,6 +162,7 @@ class EngineProc:
         """Stop the engine cleanly (zero, signal stop, close): its API's /stop, else CTRL_BREAK / SIGINT (serve
         treats both like Ctrl-C); terminate it only if it has not exited within STOP_WAIT_S."""
         with self._lock:
+            self.wanted_port = None                  # no reconnecting after a Disconnect
             proc = self.proc
             if proc is None:
                 return None
@@ -141,6 +192,7 @@ class EngineProc:
     def status(self) -> dict:
         running = self.running()
         return {"running": running, "port": self.port if running else None,
+                "reconnecting": self.reconnect_note is not None and not running, "reconnect_note": self.reconnect_note,
                 "pid": self.proc.pid if running and self.proc else None,
                 "foc312_url": "http://127.0.0.1:8322/", "api_url": "http://127.0.0.1:8321/",
                 "log": list(self.log)[-50:]}

@@ -87,7 +87,9 @@ async function refreshEngine() {
   engine = r.data;
   const run = !!engine.running;
   const pill = $("enginePill");
-  pill.textContent = run ? `engine on ${engine.port || "?"}` : "engine off";
+  pill.textContent = run ? `engine on ${engine.port || "?"}`
+    : engine.reconnecting ? "waiting for the box: power-cycle it" : "engine off";
+  pill.title = engine.reconnecting ? (engine.reconnect_note || "") : "";
   pill.className = "pill " + (run ? "on" : "off");
   $("hubStop").disabled = !run;
   const link = $("openPlayer");

@@ -46,6 +46,10 @@ function connect() {
 function setConn(on) {
   const c = $("conn");
   c.textContent = on ? "live" : "offline";
+  // the engine went away (a box trip stops it): the hub restarts it once the box is power-cycled, and this page
+  // reconnects by itself with the same setup, levels 0 and not armed
+  if (!on) showError("Engine offline. If the box tripped: switch it off and on; it reconnects by itself, then ARM again.");
+  else showError(null);
   c.className = "pill " + (on ? "on" : "off");
   if (pipWin && st) updatePip(st);   // the pop-out's dot follows the link too (only called after the script ran)
 }
