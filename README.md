@@ -1,6 +1,7 @@
 # PlaStim foc312 engine
 
-**ET-312 emulation on the FOC-Stim V4.**
+**The ET-312, on better hardware.**
+ET-312 emulation on the FOC-Stim V4.
 
 The **ET-312B** is a long-running e-stim box, still one of the best-known in the hobby. It's loved for its built-in
 patterns: Waves, Stroke, Climb, Orgasm and more, each shaping the pulses over time in its own way, with an **MA
