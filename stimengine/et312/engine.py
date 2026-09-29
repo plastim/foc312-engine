@@ -164,6 +164,9 @@ class ET312Engine:
         self.mode = 0
         self.routine = None                   # the loaded ErosLink routine while it plays as User1
         self._master_msb = 0
+        self.variant: str | None = None       # a PlaStim variant (modes.VARIANTS) changes only when the VM ticks
+        self._frozen = 0                      # engine ticks the VM did not advance (variants), for frame time
+        self._v: dict = {}
         if mode is not None and not (hasattr(mode, "modules") and hasattr(mode, "start")):
             self._mode_num(mode)              # an unknown name is an error whether or not the data is loaded
         if mode is None or (not self.builtins_available and self._is_builtin(mode)):
@@ -173,6 +176,7 @@ class ET312Engine:
 
     def _silent(self) -> None:
         self.mode = 0
+        self.variant = None
         self.routine = None
         self.vm.reset_defaults()
         self.vm.load_block(0)
@@ -209,9 +213,11 @@ class ET312Engine:
         elif not (isinstance(mode, int) and M.USER1 <= mode <= M.USER7):
             self.routine = None
         self.mode = self._mode_num(mode)
+        base, self.variant = M.VARIANTS.get(self.mode, (self.mode, None))
+        self._v = {"start": self._clock(), "div": 0, "hold": 0, "held": False, "prev": None, "top": None}
         self.vm.mem[0x74] = 0
         self.vm.ma_override_r2 = None
-        M.select_mode(self.vm, self.mode, split=self.split, user_start=self.user_start)
+        M.select_mode(self.vm, base, split=self.split, user_start=self.user_start)
         self._after_select()
         if self.mode == M.RANDOM1:
             self._random1_pick()
@@ -258,12 +264,52 @@ class ET312Engine:
 
     # ------------------------------------------------------------- stepping
     def step(self) -> ET312Frame:
+        if self.variant is not None and not self._variant_advance():
+            self._frozen += 1                 # the VM holds still this tick; the output repeats
+            return self.frame()
         self.vm.tick()
         if self.vm.tick_count % MASTER_MSB_TICKS == 0:
             self._master_msb = (self._master_msb + 1) & 0xFF
             if self.mode == M.RANDOM1 and self._master_msb == self.vm.mem[0x75]:
                 self._random1_pick()
         return self.frame()
+
+    def _clock(self) -> int:
+        return self.vm.tick_count + self._frozen
+
+    # Climb variants. Climb counts channel A's frequency register ($ae, the pulse period) down from its start value to
+    # its minimum ($af) in steps of $b2 (-1, -2, -4 for the three climbs); when the next step would pass the minimum,
+    # its at-min action starts the next climb and the register jumps back up. So the climb's progress is exact:
+    #   slow_finish  the last 10 % of the register's travel (the last 10 % of the climb's time) runs at 1/3 speed
+    #   peak_hold    at the climb's last value the VM pauses for 25 % of that climb's time, then drops as normal
+    # MA still sets the climb period (it sets the modulator's rate); both follow it.
+    SLOW_FINISH_ZONE, SLOW_FINISH_FACTOR, PEAK_HOLD_FRACTION = 0.10, 3, 0.25
+
+    def _variant_advance(self) -> bool:
+        m, v = self.vm.mem, self._v
+        f, fmin = m[0xAE], m[0xAF]
+        step = m[0xB2] - 256 if m[0xB2] >= 128 else m[0xB2]
+        if v["prev"] is None or f > v["prev"] + 20:          # a new climb (mode start, or the drop just happened)
+            v.update(start=self._clock(), top=f, held=False, hold=0, div=0)
+        v["prev"] = f
+        if step >= 0:                                         # not climbing (another block is running): no change
+            return True
+        if self.variant == "slow_finish":
+            if f <= fmin + self.SLOW_FINISH_ZONE * (v["top"] - fmin):
+                v["div"] = (v["div"] + 1) % self.SLOW_FINISH_FACTOR
+                return v["div"] == 0
+            return True
+        if self.variant == "peak_hold":
+            if v["hold"] > 0:
+                v["hold"] -= 1
+                return False
+            if not v["held"] and f < fmin - step:              # the last value before the drop: hold it
+                v["held"] = True
+                v["hold"] = int(round(self.PEAK_HOLD_FRACTION * (self._clock() - v["start"])))
+                if v["hold"] > 0:
+                    v["hold"] -= 1
+                    return False
+        return True
 
     def run(self, seconds: float) -> Iterator[ET312Frame]:
         for _ in range(int(round(seconds * TICK_HZ))):
@@ -301,7 +347,7 @@ class ET312Engine:
             phase_mode = "interleaved"
         mode = m[0x74] if self.mode == M.RANDOM1 and m[0x74] > 1 else self.mode
         return ET312Frame(
-            t=vm.tick_count * TICK_S, tick=vm.tick_count, mode=mode,
+            t=self._clock() * TICK_S, tick=self._clock(), mode=mode,
             mode_name=(self.routine.name if self.routine is not None and mode == M.USER1
                        else M.MODE_NAMES.get(mode, f"0x{mode:02x}")), a=a, b=b,
             phase_mode=phase_mode, ma_value=vm.ma_value, ctrl_flags=ctrl)

@@ -66,11 +66,15 @@ def test_catalog_has_all_18_builtins_in_box_order(tmp_path, monkeypatch):
     assert err is None
     assert [g["label"] for g in groups] == ["Built-in modes"]
     items = groups[0]["items"]
-    assert [i["id"] for i in items] == [f"builtin:{k}" for k in (
+    box = [i for i in items if i["note"] != "PlaStim variant"]
+    assert [i["id"] for i in box] == [f"builtin:{k}" for k in (
         "waves", "stroke", "climb", "combo", "intense", "rhythm", "audio1", "audio2", "audio3", "split",
         "random1", "random2", "toggle", "orgasm", "torment", "phase1", "phase2", "phase3")]
-    assert len(items) == 18
-    names = [i["name"] for i in items]
+    assert len(box) == 18
+    ids = [i["id"] for i in items]                     # the PlaStim variants follow the mode they vary
+    assert ids[ids.index("builtin:climb") + 1:ids.index("builtin:climb") + 3] == ["builtin:climb_slow",
+                                                                                   "builtin:climb_hold"]
+    names = [i["name"] for i in box]
     assert names[0] == "Waves" and names[10] == "Random 1" and names[17] == "Phase 3"
     assert all("(no audio input)" in n for n in names[6:9])
     assert not any(i["id"].startswith("builtin:user") for i in items)
@@ -431,7 +435,7 @@ async def test_http_api_preview(monkeypatch):
     try:
         r = await client.get("/patterns")
         d = await r.json()
-        assert len(d["groups"][0]["items"]) == 18
+        assert len([i for i in d["groups"][0]["items"] if i["note"] != "PlaStim variant"]) == 18
         r = await client.post("/cmd", json={"cmd": "route", "ch": "a", "code": 22})
         assert r.status == 400 and "different" in (await r.json())["error"]
         r = await client.post("/cmd", json={"cmd": "routes", "a": 23, "b": 41})

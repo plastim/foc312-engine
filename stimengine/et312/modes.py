@@ -25,6 +25,11 @@ MODE_NAMES = {
     USER1: "user1", USER2: "user2", USER3: "user3", USER4: "user4", USER5: "user5",
     USER6: "user6", USER7: "user7",
 }
+# PlaStim variants of a built-in mode: the mode's own program runs unchanged; engine.py changes only WHEN the VM ticks
+# (slows or pauses its clock at points found from the mode's own registers). Numbers in a range the ET-312 never uses.
+CLIMB_SLOW, CLIMB_HOLD = 0xF0, 0xF1
+VARIANTS = {CLIMB_SLOW: (CLIMB, "slow_finish"), CLIMB_HOLD: (CLIMB, "peak_hold")}
+MODE_NAMES.update({CLIMB_SLOW: "climb_slow", CLIMB_HOLD: "climb_hold"})
 MODE_BY_NAME = {v: k for k, v in MODE_NAMES.items()}
 # what the emulator implements fully vs. what is a stub
 IMPLEMENTED = ("waves", "stroke", "climb", "combo", "intense", "rhythm", "split", "random1",

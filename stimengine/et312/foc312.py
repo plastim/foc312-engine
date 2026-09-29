@@ -64,6 +64,14 @@ BUILTIN_MODES: tuple[tuple[str, str], ...] = (
     ("random1", "Random 1"), ("random2", "Random 2"), ("toggle", "Toggle"), ("orgasm", "Orgasm"),
     ("torment", "Torment"), ("phase1", "Phase 1"), ("phase2", "Phase 2"), ("phase3", "Phase 3"),
 )
+# PlaStim variants of built-in modes (modes.VARIANTS): the player only, for now. NOT in BUILTIN_MODES, which the M5
+# remote's pack is built from: the remote's C core doesn't know them yet.
+BUILTIN_VARIANTS: tuple[tuple[str, str, str, str], ...] = (
+    ("climb_slow", "Climb (slow finish)", "climb",
+     "PlaStim variant: Climb, with the last 10 % of every climb three times slower"),
+    ("climb_hold", "Climb (peak hold)", "climb",
+     "PlaStim variant: Climb, holding the top of every climb for a quarter of that climb's time"),
+)
 AUDIO_NOTE = "(no audio input)"
 
 # Advanced menu, raw register ranges (buttshock protocol docs, "Advanced parameters"); defaults = AdvancedParams
@@ -103,6 +111,10 @@ def pattern_catalog(elk_dir: str | Path | None) -> tuple[list[dict], dict[str, d
                          "description": ("audio modes need the box's audio input; here the intensity holds steady"
                                          if audio else ""),
                          "disabled": False, "note": AUDIO_NOTE if audio else ""})
+        for vkey, vname, after, vdesc in BUILTIN_VARIANTS:
+            if after == key:
+                builtins.append({"id": f"builtin:{vkey}", "name": vname, "description": vdesc,
+                                 "disabled": False, "note": "PlaStim variant"})
     elk_by_id: dict[str, dict] = {}
     bundled, designer, user = [], [], []
     err = None
@@ -461,7 +473,7 @@ class Foc312Runner:
         pid = str(pid)
         if pid.startswith("builtin:"):
             key = pid.split(":", 1)[1]
-            names = dict(BUILTIN_MODES)
+            names = dict(BUILTIN_MODES) | {k: n for k, n, _, _ in BUILTIN_VARIANTS}
             if key not in names:
                 raise Foc312Error(f"unknown mode {key!r}")
             try:
