@@ -34,6 +34,9 @@ logger = logging.getLogger("engine.serve")
 ROOT = Path(__file__).resolve().parents[2]
 RETRY_TOTAL_S = 30.0
 RETRY_DELAYS = (1.0, 2.0, 3.0, 5.0, 8.0, 11.0)
+# serial: only a BUSY port is retried (the hub's Detect may be asking the box what it is at that moment, or the box
+# was just plugged in); anything else fails at once as before
+SERIAL_BUSY_DELAYS = (0.5, 1.0, 1.0, 1.5, 2.0)
 
 
 def load_config(path: Path) -> dict:
@@ -50,8 +53,8 @@ def make_transport(args: argparse.Namespace):
 
 
 async def start_engine_with_retry(args: argparse.Namespace, cfg: dict, session: SessionLogger):
-    """Build transport+client+engine and start; TCP retries with backoff, serial tries once."""
-    delays = RETRY_DELAYS if args.tcp else ()
+    """Build transport+client+engine and start; TCP retries with backoff, serial retries only a busy port."""
+    delays = RETRY_DELAYS if args.tcp else SERIAL_BUSY_DELAYS if args.serial else ()
     attempt = 0
     while True:
         transport = make_transport(args)
@@ -69,7 +72,8 @@ async def start_engine_with_retry(args: argparse.Namespace, cfg: dict, session: 
                 await eng.start(args.mode)
             return eng
         except Exception as exc:  # noqa: BLE001
-            if attempt >= len(delays):
+            busy = "denied" in str(exc).lower() or "busy" in str(exc).lower() or "could not open" in str(exc).lower()
+            if attempt >= len(delays) or (args.serial and not busy):
                 raise
             delay = delays[attempt]
             attempt += 1
