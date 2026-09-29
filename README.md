@@ -191,8 +191,12 @@ The player and the remote use three kinds of patterns:
 
 - **The ET-312's 18 built-in modes** (Waves, Stroke, Climb, ...). They belong to ErosTek and are **not included**:
   extract them from your own ET-312's firmware file on the hub's **M5 remote** tab (the data stays on your computer).
-- **ErosLink routines** (`.elk` files): point the app at your ErosLink folder.
-- **PlaStim routines** in `routines/`.
+- **ErosLink routines** (`.elk` files): point the app at a folder of them. A good start is the 78
+  **ET-312 shared routines** that ErosTek gave away in 2011,
+  [archived by the Internet Archive](https://web.archive.org/web/2011id_/http://www.erostek.com/Erostek312_routines.zip)
+  ([the original post](https://web.archive.org/web/20111208144808/http://blog.erostek.com/2011/01/10/extra-eroslink-routines-free/));
+  see [INSTALL.md, step 8](INSTALL.md#8-patterns).
+- **PlaStim routines** in `routines/` (coming).
 
 Not affiliated with or endorsed by ErosTek. ET-312 is a trademark of its owner.
 

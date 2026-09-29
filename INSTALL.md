@@ -113,7 +113,8 @@ The hub's **Play** tab has a checklist that ticks itself as you go:
 
 ## 8. Patterns
 
-Out of the box the player has the PlaStim routines. Two more groups need files you own:
+The patterns come from files you get yourself (none of them are PlaStim's to include). The quickest start is the
+**ET-312 shared routines**, below: one download, 78 patterns.
 
 - **The ET-312's 18 built-in modes** (Waves, Stroke, Climb, ...). They are ErosTek's and are not included. If you own
   an ET-312B (firmware v1.6), save a copy of its firmware from your own box as a `.bin` or `.hex` file (the
@@ -126,15 +127,25 @@ Out of the box the player has the PlaStim routines. Two more groups need files y
   .\venv\Scripts\python.exe -m stimengine.et312.eroslink_cache --zip C:\path\to\ErosLink_Installer.zip
   ```
 
-  Your own `.elk` files: open `config\engine.toml` in Notepad, find the `[et312]` section at the end, and put your
-  folder in quotes, using forward slashes:
+- **The ET-312 shared routines.** In 2011 ErosTek offered a free zip of 78 ErosLink routines written by ET-312
+  owners, "as-is" ([their post, archived](https://web.archive.org/web/20111208144808/http://blog.erostek.com/2011/01/10/extra-eroslink-routines-free/)).
+  It's still available from the Internet Archive:
+  1. Download **[Erostek312_routines.zip](https://web.archive.org/web/2011id_/http://www.erostek.com/Erostek312_routines.zip)**
+     (98 KB).
+  2. Unzip it into a folder of its own, for example `Documents\ET-312 routines`. The `.elk` files are the
+     routines. The `.eis` files (saved settings from ErosLink's Interactive screen) aren't used here.
+  3. Point the app at that folder (next item).
+
+  32 of them are the same as ErosLink's own designer examples; the app lists each routine only once.
+- **Your own `.elk` files** (or the shared routines above): open `config\engine.toml` in Notepad, find the `[et312]`
+  section at the end, and put the folder in quotes, using forward slashes:
 
   ```toml
   [et312]
-  elk_dir = "C:/Users/you/Documents/ErosLink"
+  elk_dir = "C:/Users/you/Documents/ET-312 routines"
   ```
 
-Restart the hub after either change.
+Restart the hub after any of these changes.
 
 ## 9. The M5 remote (optional)
 
