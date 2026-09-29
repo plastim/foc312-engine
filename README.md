@@ -67,9 +67,9 @@ before opening restim, and the other way round.
 
 ### Where this is going: PlaStim Sedecim
 
-foc312 is also a **test step for PlaStim Sedecim**, a 16-electrode box in development. The pattern engine, the
-per-pulse current model and guard, the safety stack and the remote are being proven here first, on hardware people
-already own, before they move to Sedecim.
+foc312 shows what this approach can do: faithful ET-312 patterns with per-pulse current control, any-pair wiring,
+shaped pulses and layered safety, on hardware you can own today. The same ideas are the foundation of **PlaStim
+Sedecim**, a 16-electrode box in development that takes them much further.
 
 | | |
 |---|---|
