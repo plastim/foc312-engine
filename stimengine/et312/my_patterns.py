@@ -166,10 +166,10 @@ def _resolve_rel(rel: str, root: Path) -> Path:
 
 def _earlier_hashes(elk_dir=None, ours=None) -> dict[str, str]:
     """sha1 of every .elk listed before My patterns -> its group's name, for "listed there already"."""
-    from . import elk
+    from . import elk, shared_routines
     cache = elk.default_cache_dir()
-    named = [("ErosLink", cache / "bundled"), ("ErosLink examples", cache / "designer"),
-             ("ET-312 shared routines", cache / "shared")]
+    named = [("ErosLink", cache / "bundled"), ("ErosLink examples", cache / "designer")]
+    named += [("ET-312 shared routines", d) for d in shared_routines.folders(cache)]
     if ours:
         named.append(("Our routines", Path(ours)))
     if elk_dir:

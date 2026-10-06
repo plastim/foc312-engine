@@ -188,13 +188,17 @@ pad.
 
 ## Patterns
 
-The player and the remote use three kinds of patterns:
+The player and the remote use these kinds of patterns:
 
 - **The ET-312's 18 built-in modes** (Waves, Stroke, Climb, ...). They belong to ErosTek and are **not included**:
   extract them from your own ET-312's firmware file on the hub's **M5 remote** tab (the data stays on your computer).
-- **ErosLink routines** (`.elk` files). A good start is the **ET-312 shared routines** that ErosTek gave away in
-  2011 ([the original post](https://web.archive.org/web/20111208144808/http://blog.erostek.com/2011/01/10/extra-eroslink-routines-free/)):
-  one button in the hub fetches them from the Internet Archive.
+- **The ET-312 shared routines, included.** 78 ErosLink routine files (`.elk`, over 150 routines) written by ET-312
+  owners, which ErosTek gave away free "as-is" in 2011
+  ([the original post](https://web.archive.org/web/20111208144808/http://blog.erostek.com/2011/01/10/extra-eroslink-routines-free/)).
+  They come with the app in [`patterns/et312-shared`](patterns/et312-shared/README.md), unchanged from ErosTek's zip,
+  so the player has patterns from the first start, with no download.
+- **ErosLink's own routines**, read from ErosLink's installer if you have it
+  ([INSTALL.md, step 8](INSTALL.md#8-patterns)).
 - **Your own `.elk` files**, in **My patterns**: the `my-patterns` folder inside the app folder. Add them on the hub's
   **M5 remote** tab (**Add patterns…**, or drop them there), or copy them into the folder in Explorer (**Open
   folder**). The player lists them the next time you open its pattern list, with no restart; the M5 remote gets them

@@ -1282,7 +1282,10 @@ def read_file(path: str | os.PathLike) -> ContextFile:
 
 
 def _source_of(path: Path, cache: Path) -> str:
+    from . import shared_routines
     try:
+        if path.resolve().parent == shared_routines.bundled_folder().resolve():
+            return "shared"
         rel = path.resolve().relative_to(cache.resolve())
     except (ValueError, OSError):
         return "user"
@@ -1301,7 +1304,8 @@ def list_routines(folder: str | os.PathLike | None = None, *, cache_dir: str | o
       name, description   as ErosLink shows them
       source              "bundled"  - the CD's main routines (routines/*.elk, the ones PlaStim rates best)
                           "designer" - the CD's designer examples (routines/designer/*.elk)
-                          "shared"   - the ET-312 shared routines (shared_routines.py)
+                          "shared"   - the ET-312 shared routines (shared_routines.py: a copy an older version
+                                       fetched into the cache, then the one that ships with the app)
                           "user"     - files in `folder`
                           or the source given in `more`
       group               only for a `more` folder given a group
@@ -1316,8 +1320,9 @@ def list_routines(folder: str | os.PathLike | None = None, *, cache_dir: str | o
     cache = Path(cache_dir) if cache_dir is not None else default_cache_dir()
     dirs: list[tuple[str, Path, str | None]] = []
     if include_bundled:
-        dirs += [("bundled", cache / "bundled", None), ("designer", cache / "designer", None),
-                 ("shared", cache / "shared", None)]     # the ET-312 shared routines (shared_routines.py)
+        from . import shared_routines             # the ET-312 shared routines: a fetched copy, then the shipped one
+        dirs += [("bundled", cache / "bundled", None), ("designer", cache / "designer", None)]
+        dirs += [("shared", d, None) for d in shared_routines.folders(cache)]
     if folder:                   # None or "" = no folder of your own (Path("") would be the current folder)
         dirs.append(("user", Path(folder), None))
     for m in more or ():

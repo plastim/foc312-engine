@@ -26,6 +26,10 @@ def _never_the_users_patterns(tmp_path, monkeypatch):
     from stimengine.et312 import my_patterns
     monkeypatch.setattr(my_patterns, "FOLDER", tmp_path / "_my-patterns")
     monkeypatch.setattr(my_patterns, "OURS", tmp_path / "_routines")
+    # nor the ET-312 shared routines that ship in patterns/et312-shared (163 more in every list): tests that want them
+    # set shared_routines.BUNDLED back to BUNDLED_DEFAULT (tests/test_shared_routines.py)
+    from stimengine.et312 import shared_routines
+    monkeypatch.setattr(shared_routines, "BUNDLED", tmp_path / "_et312-shared")
 
 
 def pytest_configure(config):

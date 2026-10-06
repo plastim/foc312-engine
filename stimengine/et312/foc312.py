@@ -131,7 +131,7 @@ def pattern_catalog(elk_dir: str | Path | None, *, mine: str | Path | None = Non
     mod = _elk_module()
     if mod is not None and hasattr(mod, "list_routines"):
         more = my_patterns.sources(elk_dir, ours=ours, mine=mine)
-        try:     # the ErosLink cache (its own routines, the shared routines) even without a folder of your own
+        try:     # ErosLink's own routines (its cache) and the shared routines, even without a folder of your own
             routines = list(mod.list_routines(None, more=more) or [])
         except Exception as exc:  # noqa: BLE001
             routines, err = [], f".elk list failed: {exc}"
@@ -506,11 +506,11 @@ class Foc312Runner:
     def _catalog_signature(self) -> tuple:
         """Changes when a pattern folder does (a file copied in by hand, removed, renamed) or the built-in modes
         appear: the list is then read again. Only folder listings, no file is opened."""
-        from . import my_patterns
+        from . import my_patterns, shared_routines
         mine, ours = self._pattern_folders()
         mod = _elk_module()
         cache = mod.default_cache_dir() if mod is not None and hasattr(mod, "default_cache_dir") else None
-        dirs = [cache / "bundled", cache / "designer", cache / "shared"] if cache is not None else []
+        dirs = [cache / "bundled", cache / "designer", *shared_routines.folders(cache)] if cache is not None else []
         dirs += [d for _, d, _ in my_patterns.sources(self.elk_dir, ours=ours, mine=mine)]
         return (fwdata.default() is not None, my_patterns.signature(dirs))
 

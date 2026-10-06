@@ -6,3 +6,6 @@ Third-party components keep their own licenses:
 - vendor/restim/: restim by diglet48, MIT License (vendor/restim/LICENSE). Reference and test oracle.
 - The ET-312's built-in mode programs are ErosTek's and are not included; the app reads them from the user's own
   firmware file on the user's computer.
+- patterns/et312-shared/: the ET-312 shared routines, 78 ErosLink routine files written by ET-312 owners that
+  ErosTek gave away free "as-is" in 2011, unchanged (patterns/et312-shared/README.md has where they come from, the
+  zip's SHA-256, and how to ask for removal). Not affiliated with or endorsed by ErosTek.

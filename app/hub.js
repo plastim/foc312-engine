@@ -714,8 +714,8 @@ async function loadPatterns() {
   const p = r.data;
   tb.innerHTML = "";
   const shared = p.shared ? p.shared.count : 0;
-  $("sharedGet").textContent = shared ? "Get them again" : "Get the ET-312 shared routines";
-  $("sharedState").textContent = shared ? `${shared} shared routines on this computer` : "";
+  $("sharedState").textContent = shared ? `Included: ${shared} shared routines`
+    : "The ET-312 shared routines are missing from this install (its patterns/et312-shared folder)";
   for (const g of p.groups.filter((g) => g.count || g.name !== "Our routines")) tb.append(h("tr", {}, h("td", {}, h("b", {}, g.name)),
     h("td", { class: "mono" }, String(g.count)), h("td", { class: "muted" }, (GROUP_HELP[g.name] || (() => ""))(p))));
   $("patTotal").textContent = `· ${p.total} in all`;
@@ -800,17 +800,6 @@ $("mineRescan").addEventListener("click", () => { mineMsg(""); loadPatterns(); }
     addMine(e.dataTransfer.files);
   });
 }
-
-$("sharedGet").addEventListener("click", async () => {
-  const b = $("sharedGet");
-  b.disabled = true; $("sharedState").textContent = "Downloading from the Internet Archive…";
-  const r = await api("/api/patterns/shared", {});
-  b.disabled = false;
-  $("sharedState").textContent = r.ok
-    ? `${r.data.count} routines added. The player lists them the next time you open its pattern list; Load patterns & settings for the remote.`
-    : (r.data.error || "the download failed");
-  loadPatterns();
-});
 
 // ---------------------------------------------------------------- M5 remote: ET-312 built-in modes
 async function loadEt312() {

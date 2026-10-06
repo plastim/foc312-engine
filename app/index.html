@@ -48,8 +48,8 @@
         <li id="stepPlay"><span class="tick" aria-hidden="true"></span><div>
           <b>Open the player</b> and play:
           <ol class="sub">
-            <li>Pick a pattern. A new install has none yet: the quickest way to get some is <b>Get the ET-312 shared routines</b>
-              under <a href="#remote" data-goto="remote">Pattern files</a> on the M5 remote tab.</li>
+            <li>Pick a pattern. The <b>ET-312 shared routines</b> are included (78 files written by ET-312 owners); add
+              your own under <a href="#remote" data-goto="remote">Pattern files</a> on the M5 remote tab.</li>
             <li>Turn the box's own knob low: it is the master limit on everything this app sends.</li>
             <li>Put the electrodes on, then press <b>ARM</b>: the output ramps up slowly from zero.</li>
             <li>Raise <b>Level A</b> and <b>Level B</b> a little at a time. <b>MA</b> (Multi Adjust) changes the pattern's speed and
@@ -277,14 +277,11 @@
         <thead><tr><th>Group</th><th>Patterns</th><th>Where they come from</th></tr></thead>
         <tbody id="patRows"><tr><td colspan="3" class="muted">Reading the pattern files…</td></tr></tbody>
       </table>
-      <div class="actions">
-        <button id="sharedGet" class="primary">Get the ET-312 shared routines</button>
-        <span id="sharedState" class="muted"></span>
-      </div>
-      <p class="fine">No patterns yet? The quickest start: 78 routine files written by ET-312 owners, which ErosTek gave away
-        free in 2011 (<a href="https://web.archive.org/web/20111208144808/http://blog.erostek.com/2011/01/10/extra-eroslink-routines-free/"
-        target="_blank" rel="noopener">their post, archived</a>). The button downloads that zip from the Internet
-        Archive (98 KB), checks it, and keeps the .elk files on this computer.</p>
+      <p class="fine"><b id="sharedState">Included: the ET-312 shared routines</b>. Routine files written by ET-312
+        owners, which ErosTek gave away free "as-is" in 2011
+        (<a href="https://web.archive.org/web/20111208144808/http://blog.erostek.com/2011/01/10/extra-eroslink-routines-free/"
+        target="_blank" rel="noopener">their post, archived</a>). They come with the app, in its
+        <span class="mono">patterns\et312-shared</span> folder. Not affiliated with or endorsed by ErosTek.</p>
       <p class="fine">Every Load builds the pack from these again, so a new file is on the remote after the next Load.
         The remote has room for many more patterns than this.</p>
       <details class="also" id="patNotesBox" hidden><summary>Files left out</summary><ul id="patNotes"></ul></details>
@@ -316,16 +313,6 @@
           computer, once:</p>
         <pre class="cmd">.\venv\Scripts\python.exe -m stimengine.et312.eroslink_cache --zip C:\path\to\ErosLink_Installer.zip</pre>
         <p class="fine">Folder: <span id="patCache" class="mono"></span></p>
-      </details>
-      <details class="also">
-        <summary>Getting the ET-312 shared routines by hand</summary>
-        <p class="muted">In 2011 ErosTek gave away a zip of 78 ErosLink routine files written by ET-312 owners
-          (<a href="https://web.archive.org/web/20111208144808/http://blog.erostek.com/2011/01/10/extra-eroslink-routines-free/"
-          target="_blank" rel="noopener">their post, archived</a>). Download
-          <a href="https://web.archive.org/web/2011id_/http://www.erostek.com/Erostek312_routines.zip" target="_blank"
-          rel="noopener">Erostek312_routines.zip</a> from the Internet Archive, unzip it, and add its <i>.elk</i> files
-          with <b>Add patterns…</b> above (or copy them into the My patterns folder). The <i>.eis</i> files in the zip
-          are not needed.</p>
       </details>
     </div>
 

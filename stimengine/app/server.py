@@ -15,7 +15,6 @@
     GET  /api/remote/settings       the M5 remote's settings (config/m5.toml, no passwords), what a load sends, last load
     PUT  /api/remote/settings       save them (validated as a load would; an empty password keeps the stored one)
     GET  /api/remote/patterns       the pattern files a load would put on the remote, per group
-    POST /api/patterns/shared       fetch the ET-312 shared routines (Internet Archive, SHA-256 checked)
     GET  /api/patterns/mine         My patterns (et312/my_patterns.py): the folder, its files, why any is not used
     POST /api/patterns/mine         add .elk files (multipart, field "files"): each checked, refused ones say why
     POST /api/patterns/mine/remove  {"rel"}       one file of the folder to the Recycle Bin (else deleted)
@@ -113,7 +112,6 @@ class Hub:
         r.add_get("/api/remote/patterns", self.h_remote_patterns)
         r.add_get("/api/et312", self.h_et312)
         r.add_post("/api/et312/extract", self.h_et312_extract)
-        r.add_post("/api/patterns/shared", self.h_shared_routines)
         r.add_get("/api/patterns/mine", self.h_mine)
         r.add_post("/api/patterns/mine", self.h_mine_add)
         r.add_post("/api/patterns/mine/remove", self.h_mine_remove)
@@ -425,16 +423,8 @@ class Hub:
                 "elk_dir": {"path": elk_dir, "exists": bool(elk_dir) and Path(elk_dir).is_dir()},
                 "ours_dir": {"path": str(ours_dir), "exists": ours_dir.is_dir()},
                 "mine_dir": {"path": str(mine_dir), "exists": mine_dir.is_dir()},
-                "shared": {"path": str(shared_routines.folder()), "count": shared_routines.count()},
+                "shared": {"path": str(shared_routines.bundled_folder()), "count": shared_routines.count()},
                 "builtin": self._et312_view(data)}
-
-    async def h_shared_routines(self, _req: web.Request) -> web.Response:
-        """Fetch the ET-312 shared routines (ErosTek's free 2011 zip) from the Internet Archive, checked by SHA-256."""
-        try:
-            n = await asyncio.get_running_loop().run_in_executor(None, shared_routines.fetch)
-        except shared_routines.SharedRoutinesError as exc:
-            return _err(str(exc), 502)
-        return web.json_response({"ok": True, "count": n, "path": str(shared_routines.folder())})
 
     # ---- My patterns: the user's own .elk files (et312/my_patterns.py) --------------------------------------------
     def _mine_view(self) -> dict:

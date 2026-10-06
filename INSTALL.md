@@ -134,11 +134,9 @@ The hub's **Play** tab has a checklist that ticks itself as you go:
 
 ## 8. Patterns
 
-The patterns come from files you get yourself (none of them are PlaStim's to include), so the player starts with
-an empty list. **The quickest start:** on the hub's **M5 remote** tab, under **Pattern files**, press **Get the ET-312
-shared routines**. That's 78 files (over 150 routines) that ET-312 owners wrote and ErosTek gave away (below); the
-hub downloads them from the Internet Archive and checks them. The player lists them the next time you open its
-pattern list.
+The player starts with the **ET-312 shared routines**: 78 files (over 150 routines) that ET-312 owners wrote and
+ErosTek gave away (below). They come with the app, in its `patterns\et312-shared` folder, so there is nothing to
+download. The M5 remote gets them with its first **Load patterns & settings**.
 
 **Your own `.elk` files go in My patterns**, a folder inside the app folder: `foc312-engine\my-patterns`. On the hub's
 **M5 remote** tab, under **Pattern files**, **My patterns**:
@@ -166,16 +164,12 @@ touches it.
   .\venv\Scripts\python.exe -m stimengine.et312.eroslink_cache --zip C:\path\to\ErosLink_Installer.zip
   ```
 
-- **The ET-312 shared routines.** In 2011 ErosTek offered a free zip of 78 ErosLink routine files written by ET-312
-  owners, "as-is" ([their post, archived](https://web.archive.org/web/20111208144808/http://blog.erostek.com/2011/01/10/extra-eroslink-routines-free/)).
-  The hub's button (above) gets them for you. By hand, from the Internet Archive:
-  1. Download **[Erostek312_routines.zip](https://web.archive.org/web/2011id_/http://www.erostek.com/Erostek312_routines.zip)**
-     (98 KB).
-  2. Unzip it. The `.elk` files are the routines. The `.eis` files (saved settings from ErosLink's Interactive
-     screen) aren't used here.
-  3. Add the `.elk` files to **My patterns** (above).
-
-  32 of them are the same as ErosLink's own designer examples; the app lists each routine only once.
+- **The ET-312 shared routines** (included). In 2011 ErosTek offered a free zip of 78 ErosLink routine files written
+  by ET-312 owners, "as-is" ([their post, archived](https://web.archive.org/web/20111208144808/http://blog.erostek.com/2011/01/10/extra-eroslink-routines-free/)).
+  The app ships the zip's `.elk` files unchanged, in `patterns\et312-shared` (its
+  [README](patterns/et312-shared/README.md) has the zip's SHA-256 and how to check the folder against the archived
+  zip). If an older version of the app downloaded them for you, that copy is still read and each routine is listed
+  once. 32 of them are the same as ErosLink's own designer examples; the app lists each routine only once.
 
 The built-in modes and ErosLink's own routines show in the player after the box is disconnected and connected again
 in the hub; files in My patterns need nothing of the kind.
