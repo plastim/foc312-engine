@@ -19,6 +19,15 @@ if not os.environ.get("FOC312_FIRMWARE_CACHE"):
     os.environ["FOC312_FIRMWARE_CACHE"] = tempfile.mkdtemp(prefix="foc312-test-cache-")
 
 
+@pytest.fixture(autouse=True)
+def _never_the_users_patterns(tmp_path, monkeypatch):
+    """Not the user's own pattern folders (My patterns, routines/): the player's list and the remote's pack read them.
+    Tests get temp folders instead."""
+    from stimengine.et312 import my_patterns
+    monkeypatch.setattr(my_patterns, "FOLDER", tmp_path / "_my-patterns")
+    monkeypatch.setattr(my_patterns, "OURS", tmp_path / "_routines")
+
+
 def pytest_configure(config):
     config.addinivalue_line("markers", "needs_et312_data: needs the ET-312 built-in mode data (fwdata.py)")
 

@@ -189,8 +189,10 @@ class Foc312API:
         return web.json_response(self.runner.state(full=True))
 
     async def h_patterns(self, req: web.Request) -> web.Response:
-        groups, _, err = self.runner.catalog(refresh=req.query.get("refresh") == "1")
-        return web.json_response({"groups": groups, "error": err, "elk_dir": self.runner.elk_dir})
+        from ..et312 import my_patterns
+        groups, _, err = self.runner.catalog(refresh=req.query.get("refresh") == "1")   # rescans a changed folder
+        return web.json_response({"groups": groups, "error": err, "elk_dir": self.runner.elk_dir,
+                                  "my_patterns": str(my_patterns.folder())})
 
     async def h_cmd(self, req: web.Request) -> web.Response:
         try:

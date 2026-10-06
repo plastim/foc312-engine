@@ -236,18 +236,26 @@ function buildAdvanced(ranges) {
   }
 }
 
+// The engine reads its pattern folders again when one changed (My patterns: .elk files copied in by hand), so the
+// list is asked for again whenever this page comes back to the front; the menu is rebuilt only if it changed.
+let patternsJson = "";
 async function loadPatterns() {
   try {
     const r = await fetch("/patterns");
     const d = await r.json();
     const sel = $("pattern");
+    const j = JSON.stringify([d.groups, d.error]);
+    if (j === patternsJson) return;
+    patternsJson = j;
     sel.innerHTML = "";
     for (const g of d.groups) {
       const og = document.createElement("optgroup");
       og.label = g.label;
       if (!g.items.length) {
         const o = document.createElement("option");
-        o.disabled = true; o.textContent = "(none found)";
+        o.disabled = true;
+        o.textContent = g.label === "My patterns" ? "(none yet: copy .elk files into the My patterns folder)" : "(none found)";
+        if (g.label === "My patterns" && d.my_patterns) o.title = d.my_patterns;
         og.appendChild(o);
       }
       for (const it of g.items) {
@@ -471,6 +479,8 @@ function frame() {
 buildDiagram();
 routeHint();
 loadPatterns();
+window.addEventListener("focus", () => { if (document.activeElement !== $("pattern")) loadPatterns(); });
+document.addEventListener("visibilitychange", () => { if (!document.hidden) loadPatterns(); });
 connect();
 requestAnimationFrame(frame);
 

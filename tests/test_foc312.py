@@ -95,7 +95,7 @@ def test_every_builtin_selects_and_runs(monkeypatch):
 
 
 def _fake_elk(routines):
-    mod = types.SimpleNamespace(list_routines=lambda folder: routines, load=lambda path: "waves")
+    mod = types.SimpleNamespace(list_routines=lambda folder=None, **kw: routines, load=lambda path: "waves")
     return lambda: mod
 
 
@@ -125,7 +125,7 @@ def test_elk_selection_goes_through_importer(tmp_path, monkeypatch):
     monkeypatch.setattr(FOC, "_elk_module", _fake_elk([{"name": "Mine", "path": str(tmp_path / "m.elk")}]))
     run = Foc312Runner(config={"et312": {"elk_dir": str(tmp_path)}})
     groups = run.catalog()[0]
-    assert [g["label"] for g in groups] == ["Built-in modes", "Your routines"]
+    assert [g["label"] for g in groups] == ["Built-in modes", "Your routines", "My patterns"]   # My patterns: empty
     rid = groups[1]["items"][0]["id"]
     run.set_pattern(rid)
     assert run.pattern["name"] == "Mine"

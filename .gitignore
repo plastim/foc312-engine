@@ -17,3 +17,4 @@ config/devices.json
 config/m5-last-load.json
 config/et312-firmware-data.json
 build/
+my-patterns/

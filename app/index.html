@@ -288,6 +288,27 @@
       <p class="fine">Every Load builds the pack from these again, so a new file is on the remote after the next Load.
         The remote has room for many more patterns than this.</p>
       <details class="also" id="patNotesBox" hidden><summary>Files left out</summary><ul id="patNotes"></ul></details>
+
+      <div class="mine" id="mineDrop">
+        <h3>My patterns <small id="mineCount" class="muted"></small></h3>
+        <p class="muted">Your own ErosLink routine files (<i>.elk</i>). Add them here, drop them on this box, or copy
+          them into the folder in Explorer. The player lists them the next time you open its pattern list (no restart);
+          the remote gets them with its next <b>Load patterns &amp; settings</b>, under "yours". A subfolder becomes a
+          group of its own in the player.</p>
+        <div class="actions">
+          <input type="file" id="mineFiles" accept=".elk" multiple hidden>
+          <button id="mineAdd" class="primary">Add patterns…</button>
+          <button id="mineOpen">Open folder</button>
+          <button id="mineRescan">Rescan</button>
+          <span id="mineMsg" class="muted"></span>
+        </div>
+        <p class="fine">Folder: <span id="minePath" class="mono"></span></p>
+        <table class="devices" id="mineTable" hidden>
+          <thead><tr><th>File</th><th>Routines</th><th></th></tr></thead>
+          <tbody id="mineRows"></tbody>
+        </table>
+        <p class="fine dropnote">Drop .elk files here to add them.</p>
+      </div>
       <details class="also">
         <summary>Getting ErosLink's own routines</summary>
         <p class="muted">The ErosLink and ErosLink examples groups are the routines ErosTek shipped with ErosLink. They
@@ -302,9 +323,9 @@
           (<a href="https://web.archive.org/web/20111208144808/http://blog.erostek.com/2011/01/10/extra-eroslink-routines-free/"
           target="_blank" rel="noopener">their post, archived</a>). Download
           <a href="https://web.archive.org/web/2011id_/http://www.erostek.com/Erostek312_routines.zip" target="_blank"
-          rel="noopener">Erostek312_routines.zip</a> from the Internet Archive, unzip it into a folder of its own, and put
-          that folder in <span class="mono">[et312] elk_dir</span> in <span class="mono">config\engine.toml</span>
-          (see INSTALL.md, step 8). They then show as <b>Your routines</b> after the hub is started again.</p>
+          rel="noopener">Erostek312_routines.zip</a> from the Internet Archive, unzip it, and add its <i>.elk</i> files
+          with <b>Add patterns…</b> above (or copy them into the My patterns folder). The <i>.eis</i> files in the zip
+          are not needed.</p>
       </details>
     </div>
 

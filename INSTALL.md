@@ -137,8 +137,23 @@ The hub's **Play** tab has a checklist that ticks itself as you go:
 The patterns come from files you get yourself (none of them are PlaStim's to include), so the player starts with
 an empty list. **The quickest start:** on the hub's **M5 remote** tab, under **Pattern files**, press **Get the ET-312
 shared routines**. That's 78 files (over 150 routines) that ET-312 owners wrote and ErosTek gave away (below); the
-hub downloads them from the Internet Archive and checks them. Then disconnect and connect the box in the hub, and
-they're in the player.
+hub downloads them from the Internet Archive and checks them. The player lists them the next time you open its
+pattern list.
+
+**Your own `.elk` files go in My patterns**, a folder inside the app folder: `foc312-engine\my-patterns`. On the hub's
+**M5 remote** tab, under **Pattern files**, **My patterns**:
+
+- **Add patterns…** picks `.elk` files to copy in (or drop them onto that box). Each file is checked first; one that
+  isn't a readable ErosLink routine file is refused, with the reason.
+- **Open folder** opens it in Explorer: copying files in by hand works just as well. The player sees them the next
+  time you open its pattern list (no restart), and the M5 remote gets them with its next **Load patterns & settings**.
+- A **subfolder** of My patterns becomes a group of its own in the player ("My patterns: *name*"). One level only.
+- The list shows every file with its routines; a file that can't be used says why. **Remove** sends a file to the
+  Recycle Bin.
+- A routine that is already listed elsewhere (say, a copy of one of the shared routines) is listed only once.
+
+The folder is created the first time you use it, with a short `README.txt`. Updating the app (`git pull`) never
+touches it.
 
 - **The ET-312's 18 built-in modes** (Waves, Stroke, Climb, ...). They are ErosTek's and are not included. If you own
   an ET-312B (firmware v1.6), save a copy of its firmware from your own box as a `.bin` or `.hex` file (the
@@ -156,20 +171,23 @@ they're in the player.
   The hub's button (above) gets them for you. By hand, from the Internet Archive:
   1. Download **[Erostek312_routines.zip](https://web.archive.org/web/2011id_/http://www.erostek.com/Erostek312_routines.zip)**
      (98 KB).
-  2. Unzip it into a folder of its own, for example `C:\Users\<you>\ET-312 routines`. The `.elk` files are the
-     routines. The `.eis` files (saved settings from ErosLink's Interactive screen) aren't used here.
-  3. Point the app at that folder (next item).
+  2. Unzip it. The `.elk` files are the routines. The `.eis` files (saved settings from ErosLink's Interactive
+     screen) aren't used here.
+  3. Add the `.elk` files to **My patterns** (above).
 
   32 of them are the same as ErosLink's own designer examples; the app lists each routine only once.
-- **Your own `.elk` files** (or the shared routines above): open `config\engine.toml` in Notepad, find the `[et312]`
-  section at the end, and put the folder in quotes, using forward slashes:
 
-  ```toml
-  [et312]
-  elk_dir = "C:/Users/you/ET-312 routines"
-  ```
+The built-in modes and ErosLink's own routines show in the player after the box is disconnected and connected again
+in the hub; files in My patterns need nothing of the kind.
 
-Restart the hub after any of these changes.
+**Advanced: a folder of your own elsewhere.** Instead of (or as well as) My patterns, the app can read one more
+folder, set in `config\engine.toml`: find the `[et312]` section at the end and put the folder in quotes, using forward
+slashes. Its routines are listed as **Your routines**. Restart the hub after changing it.
+
+```toml
+[et312]
+elk_dir = "C:/Users/you/ET-312 routines"
+```
 
 ## 9. The M5 remote (optional)
 
@@ -204,7 +222,8 @@ git pull
 .\venv\Scripts\python.exe -m pip install -r requirements.txt
 ```
 
-If `git pull` complains that `config\engine.toml` would be overwritten, copy your `elk_dir` line somewhere, run
+Your `my-patterns` folder is not part of the download, so updating never changes it. If `git pull` complains that
+`config\engine.toml` would be overwritten (you set `elk_dir` there), copy your `elk_dir` line somewhere, run
 `git checkout config\engine.toml`, pull again, and put the line back.
 
 Firmware updates for the box and the remote come through the hub (**Check for updates**), never automatically.

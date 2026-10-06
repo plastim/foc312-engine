@@ -180,3 +180,9 @@ pre.cmd { background: var(--logbg); border: 1px solid var(--line); border-radius
 .uprow { display: flex; gap: 12px; align-items: center; justify-content: space-between; border-top: 1px solid var(--line); padding-top: 8px; }
 .upnotes { font-size: 13px; margin-top: 2px; white-space: pre-line; }
 .check.small { font-size: 13px; margin: 6px 0 0; }
+
+/* My patterns (M5 remote tab, Pattern files): a drop target for .elk files */
+.mine { margin-top: 14px; padding: 10px 12px; border: 1px dashed var(--line); border-radius: 10px; }
+.mine h3 { margin-top: 0; }
+.mine.dragover { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 8%, transparent); }
+.mine .dropnote { margin-top: 6px; }

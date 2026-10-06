@@ -194,9 +194,15 @@ The player and the remote use three kinds of patterns:
   extract them from your own ET-312's firmware file on the hub's **M5 remote** tab (the data stays on your computer).
 - **ErosLink routines** (`.elk` files). A good start is the **ET-312 shared routines** that ErosTek gave away in
   2011 ([the original post](https://web.archive.org/web/20111208144808/http://blog.erostek.com/2011/01/10/extra-eroslink-routines-free/)):
-  one button in the hub fetches them from the Internet Archive. Or point the app at a folder of your own; see
-  [INSTALL.md, step 8](INSTALL.md#8-patterns).
-- **PlaStim routines** in `routines/` (coming).
+  one button in the hub fetches them from the Internet Archive.
+- **Your own `.elk` files**, in **My patterns**: the `my-patterns` folder inside the app folder. Add them on the hub's
+  **M5 remote** tab (**Add patterns…**, or drop them there), or copy them into the folder in Explorer (**Open
+  folder**). The player lists them the next time you open its pattern list, with no restart; the M5 remote gets them
+  with its next **Load patterns & settings**. A subfolder becomes its own group in the player. A file that can't be
+  read is listed with the reason, and a routine you already have elsewhere is listed once. See
+  [INSTALL.md, step 8](INSTALL.md#8-patterns) (it also covers `elk_dir` in `config/engine.toml`, the older way to add
+  a folder).
+- **PlaStim routines** in `routines/` (coming). The player and the remote both list them as **Our routines**.
 
 Not affiliated with or endorsed by ErosTek. ET-312 is a trademark of its owner.
 

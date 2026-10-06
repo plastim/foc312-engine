@@ -14,8 +14,9 @@ Layout (little-endian):
                kind 2: u8 start module  u8 module count  count x (u8 module number >= 0x80, u16 length, bytecode)
     trailer  u32 CRC-32 (zlib) of everything before it
 
-Groups (what the remote's pattern list shows): 0 built-in modes, 1 ErosLink, 2 ErosLink examples, 3 your routines,
-4 our routines.
+Groups (what the remote's pattern list shows): 0 built-in modes, 1 ErosLink, 2 ErosLink examples, 3 your routines
+(the ET-312 shared routines, [et312] elk_dir, My patterns and its subfolders: the remote has no more groups than
+these), 4 our routines (routines/).
 """
 from __future__ import annotations
 
@@ -156,9 +157,12 @@ def parse(data: bytes) -> Pack:
 # ---- what goes into the pack ----------------------------------------------------------------------------------
 
 def collect(*, firmware=None, elk_dir: str | Path | None = None, ours_dir: str | Path | None = None,
-            include_eroslink: bool = True) -> tuple[Pack, list[str]]:
-    """Every pattern this PC can play, as a pack; plus notes on anything left out (and why)."""
-    from ..et312 import elk, fwdata
+            mine_dir: str | Path | None = None, include_eroslink: bool = True) -> tuple[Pack, list[str]]:
+    """Every pattern this PC can play, as a pack; plus notes on anything left out (and why).
+
+    ours_dir: PlaStim's routines (routines/); mine_dir: My patterns (et312/my_patterns.py), whose files and
+    subfolders go into "Your routines". One listing for all of them, so a file found twice is packed once."""
+    from ..et312 import elk, fwdata, my_patterns
 
     notes: list[str] = []
     entries: list[Entry] = []
@@ -189,12 +193,10 @@ def collect(*, firmware=None, elk_dir: str | Path | None = None, ours_dir: str |
                 continue
             entries.append(Entry(r["name"], group_of(r), start=cr.start, modules=dict(cr.modules)))
 
-    if include_eroslink:
-        listing = elk.list_routines(elk_dir)
-        add_routines(listing, lambda r: {"bundled": GROUP_EROSLINK, "designer": GROUP_EXAMPLES}.get(
-            r.get("source"), GROUP_YOURS))
-    if ours_dir and Path(ours_dir).is_dir():
-        add_routines(elk.list_routines(ours_dir, include_bundled=False), lambda r: GROUP_OURS)
+    more = my_patterns.sources(elk_dir if include_eroslink else None, ours=ours_dir, mine=mine_dir)
+    listing = elk.list_routines(None, include_bundled=include_eroslink, more=more)
+    add_routines(listing, lambda r: {"bundled": GROUP_EROSLINK, "designer": GROUP_EXAMPLES,
+                                     "ours": GROUP_OURS}.get(r.get("source"), GROUP_YOURS))
     order = {GROUP_BUILTIN: 1, GROUP_EROSLINK: 0, GROUP_EXAMPLES: 2, GROUP_YOURS: 3, GROUP_OURS: 4}
     entries.sort(key=lambda e: order[e.group])       # stable: each group keeps its own order
     return Pack(entries, builtin_blocks), notes

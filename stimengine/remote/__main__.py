@@ -24,12 +24,14 @@ DEFAULT_OUT = ROOT / "build" / "m5"
 
 
 def build(out: Path) -> tuple[bytes, bytes]:
+    from ..et312 import my_patterns
     from ..et312.foc312 import DEFAULT_ELK_DIR
     import tomllib
 
     with open(ROOT / "config" / "engine.toml", "rb") as f:
         et = tomllib.load(f).get("et312", {})
-    pk, notes = pack.collect(elk_dir=et.get("elk_dir", DEFAULT_ELK_DIR), ours_dir=ROOT / "routines")
+    pk, notes = pack.collect(elk_dir=et.get("elk_dir", DEFAULT_ELK_DIR), ours_dir=my_patterns.ours_folder(),
+                             mine_dir=my_patterns.folder())
     data = pack.build(pk)
     cfg = m5config.to_bytes(m5config.build_from_files())
     out.mkdir(parents=True, exist_ok=True)

@@ -15,6 +15,11 @@
     GET  /api/remote/settings       the M5 remote's settings (config/m5.toml, no passwords), what a load sends, last load
     PUT  /api/remote/settings       save them (validated as a load would; an empty password keeps the stored one)
     GET  /api/remote/patterns       the pattern files a load would put on the remote, per group
+    POST /api/patterns/shared       fetch the ET-312 shared routines (Internet Archive, SHA-256 checked)
+    GET  /api/patterns/mine         My patterns (et312/my_patterns.py): the folder, its files, why any is not used
+    POST /api/patterns/mine         add .elk files (multipart, field "files"): each checked, refused ones say why
+    POST /api/patterns/mine/remove  {"rel"}       one file of the folder to the Recycle Bin (else deleted)
+    POST /api/patterns/mine/open                  show the folder in Explorer (on this computer)
     GET  /api/et312                 whether the ET-312 built-in mode data is available, and from where
     POST /api/et312/extract         the user's own ET-312 v1.6 firmware image -> config/et312-firmware-data.json
 
@@ -35,7 +40,7 @@ import aiohttp
 from aiohttp import web
 
 from ..control.origin import origin_guard
-from ..et312 import shared_routines
+from ..et312 import my_patterns, shared_routines
 from . import devices, firmware, m5settings, status, updates
 from .engine_proc import EngineProc
 from .jobs import ROOT, JobBusy, JobManager
@@ -48,6 +53,7 @@ FOC312_CMD = "http://127.0.0.1:8322/cmd"
 FOC312_STATE = "http://127.0.0.1:8322/state"
 LEVEL_STEP = 0.01
 EXTRACT_MAX_BYTES = 256 * 1024       # an ET-312 image is 16 KB (.bin) or ~45 KB (.hex)
+ADD_MAX_TOTAL = 16 * 1024 * 1024     # one "Add patterns" request, all files together
 
 
 def _err(msg: str, status: int = 400) -> web.Response:
@@ -108,6 +114,10 @@ class Hub:
         r.add_get("/api/et312", self.h_et312)
         r.add_post("/api/et312/extract", self.h_et312_extract)
         r.add_post("/api/patterns/shared", self.h_shared_routines)
+        r.add_get("/api/patterns/mine", self.h_mine)
+        r.add_post("/api/patterns/mine", self.h_mine_add)
+        r.add_post("/api/patterns/mine/remove", self.h_mine_remove)
+        r.add_post("/api/patterns/mine/open", self.h_mine_open)
         # a finished load records what the remote got, so the page can say whether it still matches
         self.jobs.on_done["remote-load"] = m5settings.record_job
         self.jobs.on_done["flash-remote"] = _record_remote_flash
@@ -400,9 +410,9 @@ class Hub:
         from ..remote import pack
         cfg = self._engine_cfg()
         elk_dir = str((cfg.get("et312") or {}).get("elk_dir", DEFAULT_ELK_DIR))
-        ours_dir = ROOT / "routines"
+        ours_dir, mine_dir = my_patterns.ours_folder(), my_patterns.folder()
         data = fwdata.load(cfg)
-        pk, notes = pack.collect(firmware=data, elk_dir=elk_dir, ours_dir=ours_dir)
+        pk, notes = pack.collect(firmware=data, elk_dir=elk_dir, ours_dir=ours_dir, mine_dir=mine_dir)
         counts: dict[int, int] = {}
         for e in pk.entries:
             counts[e.group] = counts.get(e.group, 0) + 1
@@ -414,6 +424,7 @@ class Hub:
                                    "files": len(list(cache.glob("*/*.elk"))) if cache.is_dir() else 0},
                 "elk_dir": {"path": elk_dir, "exists": bool(elk_dir) and Path(elk_dir).is_dir()},
                 "ours_dir": {"path": str(ours_dir), "exists": ours_dir.is_dir()},
+                "mine_dir": {"path": str(mine_dir), "exists": mine_dir.is_dir()},
                 "shared": {"path": str(shared_routines.folder()), "count": shared_routines.count()},
                 "builtin": self._et312_view(data)}
 
@@ -424,6 +435,89 @@ class Hub:
         except shared_routines.SharedRoutinesError as exc:
             return _err(str(exc), 502)
         return web.json_response({"ok": True, "count": n, "path": str(shared_routines.folder())})
+
+    # ---- My patterns: the user's own .elk files (et312/my_patterns.py) --------------------------------------------
+    def _mine_view(self) -> dict:
+        from ..et312.foc312 import DEFAULT_ELK_DIR
+        elk_dir = str((self._engine_cfg().get("et312") or {}).get("elk_dir", DEFAULT_ELK_DIR))
+        return my_patterns.view(elk_dir=elk_dir, ours=my_patterns.ours_folder())
+
+    async def h_mine(self, _req: web.Request) -> web.Response:
+        try:
+            out = await asyncio.get_running_loop().run_in_executor(None, self._mine_view)
+        except OSError as exc:
+            return _err(f"could not read My patterns: {exc}", 500)
+        return web.json_response(out)
+
+    async def h_mine_add(self, req: web.Request) -> web.Response:
+        """Files from the page's picker or a drop, as multipart parts. Each is checked on its own (name, extension,
+        size, readable as ErosLink routines) and written into My patterns; the answer lists what was added and what
+        was refused, with the reason. Nothing is kept from a refused file."""
+        if not req.content_type.startswith("multipart/"):
+            return _err("send the files as a multipart form")
+        added, refused = [], []
+        total, n = 0, 0
+        reader = await req.multipart()
+        while True:
+            part = await reader.next()
+            if part is None:
+                break
+            fname = getattr(part, "filename", None)
+            if not fname:
+                await part.release()
+                continue
+            n += 1
+            if n > my_patterns.MAX_FILES:
+                refused.append({"name": str(fname), "error": f"at most {my_patterns.MAX_FILES} files at a time"})
+                await part.release()
+                continue
+            data, too_big = b"", False
+            while True:
+                chunk = await part.read_chunk()
+                if not chunk:
+                    break
+                total += len(chunk)
+                if total > ADD_MAX_TOTAL:
+                    return _err(f"too much at once (at most {ADD_MAX_TOTAL // (1024 * 1024)} MB): nothing more was "
+                                f"added after {len(added)} file(s)", 413)
+                if len(data) + len(chunk) > my_patterns.MAX_FILE_BYTES:
+                    too_big = True
+                    continue                                     # read on to the next part, keep nothing
+                data += chunk
+            if too_big:
+                refused.append({"name": str(fname), "error": "too big for a routine file "
+                                f"(at most {my_patterns.MAX_FILE_BYTES // 1024} KB)"})
+                continue
+            try:
+                res = await asyncio.get_running_loop().run_in_executor(None, my_patterns.add, str(fname), data)
+            except my_patterns.MyPatternsError as exc:
+                refused.append({"name": str(fname), "error": str(exc)})
+                continue
+            except OSError as exc:
+                refused.append({"name": str(fname), "error": f"could not be written ({exc.strerror or exc})"})
+                continue
+            added.append({"from": str(fname), **res})
+        if not added and not refused:
+            return _err("no file received")
+        return web.json_response({"ok": bool(added) or not refused, "added": added, "refused": refused,
+                                  "path": str(my_patterns.folder())})
+
+    async def h_mine_remove(self, req: web.Request) -> web.Response:
+        rel = str((await _body(req)).get("rel", ""))
+        try:
+            how = await asyncio.get_running_loop().run_in_executor(None, my_patterns.remove, rel)
+        except my_patterns.MyPatternsError as exc:
+            return _err(str(exc))
+        except OSError as exc:
+            return _err(f"could not remove it ({exc.strerror or exc})", 409)
+        return web.json_response({"ok": True, "rel": rel, "how": how})
+
+    async def h_mine_open(self, _req: web.Request) -> web.Response:
+        try:
+            path = await asyncio.get_running_loop().run_in_executor(None, my_patterns.open_folder)
+        except OSError as exc:
+            return _err(f"could not open the folder ({exc.strerror or exc}): {my_patterns.folder()}", 500)
+        return web.json_response({"ok": True, "path": str(path)})
 
     async def h_remote_patterns(self, _req: web.Request) -> web.Response:
         try:

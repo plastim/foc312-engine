@@ -48,7 +48,8 @@ from .vm import TICK_HZ
 
 logger = logging.getLogger("engine.foc312")
 
-DEFAULT_ELK_DIR = ""          # your own .elk folder: [et312] elk_dir in config/engine.toml (none by default)
+DEFAULT_ELK_DIR = ""          # an older way to add .elk files: [et312] elk_dir in config/engine.toml (none by default);
+                              # My patterns (my_patterns.py) is the folder the hub and the docs point to
 OUTPUTS = ("preview", "fork")
 NEEDS_FORK = "this box needs the PlaStim fork firmware: flash it on the hub's Boxes tab"
 MEASURED_STALE_S = 1.5          # a measured current older than this shows as unknown
@@ -103,10 +104,14 @@ def _is_bundled(r: dict) -> bool:
     return bool(r.get("bundled")) or str(r.get("source", "")).lower() in ("bundled", "eroslink")
 
 
-def pattern_catalog(elk_dir: str | Path | None) -> tuple[list[dict], dict[str, dict], str | None]:
+def pattern_catalog(elk_dir: str | Path | None, *, mine: str | Path | None = None,
+                    ours: str | Path | None = None) -> tuple[list[dict], dict[str, dict], str | None]:
     """(groups, elk_by_id, error). Groups in order: "ErosLink (bundled)" (only when the importer marks entries
-    bundled), "Built-in modes", "ErosLink examples" (source="designer"), "Your routines".
+    bundled), "Built-in modes", "ErosLink examples" (source="designer"), "ET-312 shared routines", "Our routines"
+    (`ours`, routines/), "Your routines" ([et312] elk_dir), "My patterns" (`mine`), then one "My patterns: <name>"
+    per subfolder of it (my_patterns.py). A file that can't be read is listed, disabled, with the reason.
     Each item: {id, name, description, disabled, note}."""
+    from . import my_patterns
     builtins = []
     for key, name in BUILTIN_MODES:
         audio = key in M.STUBBED
@@ -119,12 +124,15 @@ def pattern_catalog(elk_dir: str | Path | None) -> tuple[list[dict], dict[str, d
                 builtins.append({"id": f"builtin:{vkey}", "name": vname, "description": vdesc,
                                  "disabled": False, "note": "PlaStim variant"})
     elk_by_id: dict[str, dict] = {}
-    bundled, designer, shared, user = [], [], [], []
+    bundled, designer, shared, ours_items, user = [], [], [], [], []
+    mine_groups: dict[str, list[dict]] = {label: [] for label, _ in (my_patterns.group_dirs(Path(mine)) if mine
+                                                                     else [])}
     err = None
     mod = _elk_module()
     if mod is not None and hasattr(mod, "list_routines"):
+        more = my_patterns.sources(elk_dir, ours=ours, mine=mine)
         try:     # the ErosLink cache (its own routines, the shared routines) even without a folder of your own
-            routines = list(mod.list_routines(str(elk_dir) if elk_dir else None) or [])
+            routines = list(mod.list_routines(None, more=more) or [])
         except Exception as exc:  # noqa: BLE001
             routines, err = [], f".elk list failed: {exc}"
         for r in routines:
@@ -133,13 +141,22 @@ def pattern_catalog(elk_dir: str | Path | None) -> tuple[list[dict], dict[str, d
             rid = "elk:" + hashlib.sha1(str(r["path"]).encode("utf-8")).hexdigest()[:12]
             item = {"id": rid, "name": str(r.get("name") or Path(str(r["path"])).stem),
                     "description": str(r.get("description") or ""), "disabled": False, "note": ""}
-            elk_by_id[rid] = dict(r)
+            if r.get("error"):                     # listed with the reason, never offered to play
+                item.update(name=f"{item['name']} (can't be read)", disabled=True, note="unreadable",
+                            description=f"{Path(str(r.get('file') or r['path'])).name}: {r['error']}")
+            else:
+                elk_by_id[rid] = dict(r)
+            source = str(r.get("source", "")).lower()
             if _is_bundled(r):
                 bundled.append(item)
-            elif str(r.get("source", "")).lower() == "designer":
+            elif source == "designer":
                 designer.append(item)
-            elif str(r.get("source", "")).lower() == "shared":
+            elif source == "shared":
                 shared.append(item)
+            elif source == "ours":
+                ours_items.append(item)
+            elif source == "mine":
+                mine_groups.setdefault(str(r.get("group") or my_patterns.GROUP), []).append(item)
             else:
                 user.append(item)
     groups = []
@@ -151,8 +168,16 @@ def pattern_catalog(elk_dir: str | Path | None) -> tuple[list[dict], dict[str, d
         groups.append({"label": "ErosLink examples", "items": designer})
     if shared:
         groups.append({"label": "ET-312 shared routines", "items": shared})
-    if user or mod is not None:
+    if ours_items:
+        groups.append({"label": "Our routines", "items": ours_items})
+    if user or (mod is not None and elk_dir):
         groups.append({"label": "Your routines", "items": user})
+    if mod is not None:
+        if mine:
+            mine_groups.setdefault(my_patterns.GROUP, [])
+        for label, items in mine_groups.items():   # My patterns itself even when empty (where to put files)
+            if items or label == my_patterns.GROUP:
+                groups.append({"label": label, "items": items})
     return groups, elk_by_id, err
 
 
@@ -194,6 +219,7 @@ class Foc312Runner:
         self.last_error: str | None = None
         self.last_heartbeat: float | None = None
         self._catalog: tuple[list[dict], dict[str, dict], str | None] | None = None
+        self._catalog_sig: tuple | None = None
         self._acc = 0.0
         self._last = None
         self._last_hist = -1e9
@@ -473,9 +499,28 @@ class Foc312Runner:
             self.engine.renew_lease("foc312")
 
     # ---- knobs / pattern ------------------------------------------------------------------------------------
+    def _pattern_folders(self) -> tuple[Path, Path]:
+        from . import my_patterns
+        return my_patterns.folder(), my_patterns.ours_folder()
+
+    def _catalog_signature(self) -> tuple:
+        """Changes when a pattern folder does (a file copied in by hand, removed, renamed) or the built-in modes
+        appear: the list is then read again. Only folder listings, no file is opened."""
+        from . import my_patterns
+        mine, ours = self._pattern_folders()
+        mod = _elk_module()
+        cache = mod.default_cache_dir() if mod is not None and hasattr(mod, "default_cache_dir") else None
+        dirs = [cache / "bundled", cache / "designer", cache / "shared"] if cache is not None else []
+        dirs += [d for _, d, _ in my_patterns.sources(self.elk_dir, ours=ours, mine=mine)]
+        return (fwdata.default() is not None, my_patterns.signature(dirs))
+
     def catalog(self, refresh: bool = False):
-        if self._catalog is None or refresh:
-            self._catalog = pattern_catalog(self.elk_dir)
+        """The pattern list; read again when a folder changed since (so files copied in show with no restart)."""
+        sig = self._catalog_signature()
+        if self._catalog is None or refresh or sig != self._catalog_sig:
+            mine, ours = self._pattern_folders()
+            self._catalog = pattern_catalog(self.elk_dir, mine=mine, ours=ours)
+            self._catalog_sig = sig
         return self._catalog
 
     def set_pattern(self, pid: str) -> None:

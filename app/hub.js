@@ -700,9 +700,10 @@ const GROUP_HELP = {
   "Built-in modes": () => "The ET-312's own 18 modes. Not included: extract them from your own ET-312's firmware (card below).",
   "ErosLink": () => "The routines ErosTek shipped with ErosLink, from ErosLink's installer (see below).",
   "ErosLink examples": () => "ErosLink's designer examples, from the same installer.",
-  "Your routines": (p) => [p.shared && p.shared.count ? `The ET-312 shared routines (${p.shared.count} files), and ` : "",
-    p.elk_dir.path ? [".elk files in your folder: ", h("span", { class: "mono" }, p.elk_dir.path),
-      p.elk_dir.exists ? "" : " (not found)"] : ".elk files in a folder of your own (INSTALL.md, step 8)", "."],
+  "Your routines": (p) => [p.shared && p.shared.count ? `The ET-312 shared routines (${p.shared.count} files), ` : "",
+    "My patterns (below)",
+    p.elk_dir.path ? [", and .elk files in your elk_dir folder: ", h("span", { class: "mono" }, p.elk_dir.path),
+      p.elk_dir.exists ? "" : " (not found)"] : "", "."],
   "Our routines": (p) => ["PlaStim's routines in this program's folder: ", h("span", { class: "mono" }, p.ours_dir.path),
     p.ours_dir.exists ? "" : " (empty so far)"],
 };
@@ -723,6 +724,81 @@ async function loadPatterns() {
   notes.innerHTML = "";
   (p.notes || []).forEach((n) => notes.append(h("li", {}, n)));
   $("patNotesBox").hidden = !(p.notes || []).length;
+  loadMine();
+}
+
+// ---------------------------------------------------------------- M5 remote: My patterns (the user's own .elk files)
+function mineMsg(text, cls = "muted") { $("mineMsg").textContent = text; $("mineMsg").className = cls; }
+async function loadMine() {
+  const r = await api("/api/patterns/mine");
+  if (!r.ok) { mineMsg(r.data.error || "could not read My patterns", "warntext"); return; }
+  const m = r.data, tb = $("mineRows");
+  $("minePath").textContent = m.exists ? m.path : `${m.path} (created when the first file is added)`;
+  const usable = m.files.filter((f) => f.routines.length && !f.error && !f.ignored);
+  const nr = usable.reduce((n, f) => n + (f.duplicate_of ? 0 : f.routines.length), 0);
+  $("mineCount").textContent = m.files.length ? `· ${usable.length} file${usable.length === 1 ? "" : "s"}, ${nr} routine${nr === 1 ? "" : "s"}` : "· none yet";
+  tb.innerHTML = "";
+  $("mineTable").hidden = !m.files.length;
+  for (const f of m.files) {
+    let what;
+    if (f.ignored) what = h("span", { class: "muted" }, `Not used: ${f.ignored}`);
+    else if (f.error) what = h("span", { class: "warntext" }, `Not used: ${f.error}`);
+    else {
+      const names = f.routines.join(", ");
+      what = [h("span", {}, names.length > 120 ? names.slice(0, 117) + "…" : names),
+        f.duplicate_of ? h("div", { class: "fine" }, `Same file as one in ${f.duplicate_of}: listed there, once.`) : null];
+    }
+    tb.append(h("tr", {},
+      h("td", { class: "mono" }, f.rel),
+      h("td", {}, what),
+      h("td", { class: "act" }, h("button", { onclick: () => removeMine(f.rel) }, "Remove"))));
+  }
+}
+async function addMine(files) {
+  const list = [...files];
+  if (!list.length) return;
+  const fd = new FormData();
+  for (const f of list) fd.append("files", f, f.name);
+  mineMsg(`Adding ${list.length} file${list.length === 1 ? "" : "s"}…`);
+  const r = await fetch("/api/patterns/mine", { method: "POST", body: fd })
+    .then(async (x) => ({ ok: x.ok, data: await x.json().catch(() => ({})) }))
+    .catch(() => ({ ok: false, data: { error: "the hub server is not answering" } }));
+  $("mineFiles").value = "";
+  if (!r.ok && !r.data.refused) { mineMsg(r.data.error || "nothing was added", "warntext"); loadPatterns(); return; }
+  const added = r.data.added || [], refused = r.data.refused || [];
+  const parts = [];
+  if (added.length) parts.push(`${added.length} added`);
+  if (refused.length) parts.push(`${refused.length} not added: ` + refused.map((x) => `${x.name} (${x.error})`).join("; "));
+  mineMsg(parts.join(". ") + (added.length ? ". The player shows them now; Load patterns & settings for the remote." : ""),
+    refused.length ? "warntext" : "oktext");
+  loadPatterns();
+}
+async function removeMine(rel) {
+  if (!confirm(`Remove ${rel} from My patterns? On Windows it goes to the Recycle Bin.`)) return;
+  const r = await api("/api/patterns/mine/remove", { rel });
+  mineMsg(r.ok ? `${rel} ${r.data.how === "recycled" ? "moved to the Recycle Bin" : "deleted"}.` : (r.data.error || "not removed"),
+    r.ok ? "muted" : "warntext");
+  loadPatterns();
+}
+$("mineAdd").addEventListener("click", () => $("mineFiles").click());
+$("mineFiles").addEventListener("change", () => addMine($("mineFiles").files));
+$("mineOpen").addEventListener("click", async () => {
+  const r = await api("/api/patterns/mine/open", {});
+  if (!r.ok) mineMsg(r.data.error || "could not open the folder", "warntext");
+  else loadMine();
+});
+$("mineRescan").addEventListener("click", () => { mineMsg(""); loadPatterns(); });
+{
+  const drop = $("mineDrop");
+  const hasFiles = (e) => [...(e.dataTransfer?.types || [])].includes("Files");
+  drop.addEventListener("dragover", (e) => { if (!hasFiles(e)) return; e.preventDefault(); drop.classList.add("dragover"); });
+  drop.addEventListener("dragleave", (e) => { if (!drop.contains(e.relatedTarget)) drop.classList.remove("dragover"); });
+  drop.addEventListener("drop", (e) => {
+    if (!hasFiles(e)) return;
+    e.preventDefault();
+    drop.classList.remove("dragover");
+    addMine(e.dataTransfer.files);
+  });
 }
 
 $("sharedGet").addEventListener("click", async () => {
@@ -731,7 +807,7 @@ $("sharedGet").addEventListener("click", async () => {
   const r = await api("/api/patterns/shared", {});
   b.disabled = false;
   $("sharedState").textContent = r.ok
-    ? `${r.data.count} routines added. Load patterns & settings for the remote; in the player, disconnect and connect the box.`
+    ? `${r.data.count} routines added. The player lists them the next time you open its pattern list; Load patterns & settings for the remote.`
     : (r.data.error || "the download failed");
   loadPatterns();
 });

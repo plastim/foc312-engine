@@ -1290,8 +1290,12 @@ def _source_of(path: Path, cache: Path) -> str:
 
 
 def list_routines(folder: str | os.PathLike | None = None, *, cache_dir: str | os.PathLike | None = None,
-                  include_bundled: bool = True) -> list[dict]:
-    """Routines available to the UI: the ErosLink CD's own first, then `folder` (non-recursive).
+                  include_bundled: bool = True, more=()) -> list[dict]:
+    """Routines available to the UI: the ErosLink CD's own first, then `folder` (non-recursive), then `more`.
+
+    `more`: further folders, each (source, folder) or (source, folder, group), listed in that order (my_patterns.py:
+    our routines, [et312] elk_dir, My patterns and its subfolders); their entries carry that source, and the group
+    when one is given.
 
     Each entry is a dict:
       name, description   as ErosLink shows them
@@ -1299,43 +1303,60 @@ def list_routines(folder: str | os.PathLike | None = None, *, cache_dir: str | o
                           "designer" - the CD's designer examples (routines/designer/*.elk)
                           "shared"   - the ET-312 shared routines (shared_routines.py)
                           "user"     - files in `folder`
+                          or the source given in `more`
+      group               only for a `more` folder given a group
       bundled             True only for source == "bundled"
       path                what load() takes.  A file can hold several routines; then path is
                           "<file>#<index>" so every entry has a distinct path
       file, index         the .elk file and the routine's position in it
-      id                  "<source>/<file name>#<index>"
-    Files with identical bytes are listed once (the CD copy wins), so a folder holding copies of CD
-    routines doesn't double them.  A file that can't be read is listed with an "error" message and
-    index None (load() would raise for it)."""
+      id                  "<source>/<file name>#<index>" ("<source>/<group>/<file name>#<index>" with a group)
+    Files with identical bytes are listed once (the first copy wins: the CD's, then in the order above), so a folder
+    holding copies of CD routines doesn't double them.  A file that can't be read (or holds no routines) is listed
+    with an "error" message and index None (load() would raise for it)."""
     cache = Path(cache_dir) if cache_dir is not None else default_cache_dir()
-    dirs: list[tuple[str, Path]] = []
+    dirs: list[tuple[str, Path, str | None]] = []
     if include_bundled:
-        dirs += [("bundled", cache / "bundled"), ("designer", cache / "designer"),
-                 ("shared", cache / "shared")]           # the ET-312 shared routines (shared_routines.py)
+        dirs += [("bundled", cache / "bundled", None), ("designer", cache / "designer", None),
+                 ("shared", cache / "shared", None)]     # the ET-312 shared routines (shared_routines.py)
     if folder:                   # None or "" = no folder of your own (Path("") would be the current folder)
-        dirs.append(("user", Path(folder)))
+        dirs.append(("user", Path(folder), None))
+    for m in more or ():
+        if m and m[1]:
+            dirs.append((str(m[0]), Path(m[1]), m[2] if len(m) > 2 else None))
     out: list[dict] = []
     seen: set[str] = set()
-    for source, d in dirs:
+    for source, d, group in dirs:
         if not d.is_dir():
             continue
+        tag = f"{source}/{group}" if group else source
         for f in sorted(d.glob("*.elk"), key=lambda q: q.name.lower()):
-            data = f.read_bytes()
+            base = dict(source=source, bundled=source == "bundled", file=str(f))
+            if group:
+                base["group"] = group
+            try:
+                data = f.read_bytes()
+            except OSError as e:                        # locked (still being copied in?): listed, not fatal
+                out.append(dict(base, name=f.stem, description="", path=str(f), index=None,
+                                id=f"{tag}/{f.name}", error=f"could not be read ({e.strerror or e})"))
+                continue
             h = hashlib.sha1(data).hexdigest()
             if h in seen:
                 continue
             seen.add(h)
-            base = dict(source=source, bundled=source == "bundled", file=str(f))
             try:
                 ctx = read_context(data)
             except Exception as e:                      # noqa: BLE001 - one bad file must not hide the rest
                 out.append(dict(base, name=f.stem, description="", path=str(f), index=None,
-                                id=f"{source}/{f.name}", error=str(e)))
+                                id=f"{tag}/{f.name}", error=str(e)))
+                continue
+            if not ctx.routines:
+                out.append(dict(base, name=f.stem, description="", path=str(f), index=None,
+                                id=f"{tag}/{f.name}", error="the file holds no routines"))
                 continue
             many = len(ctx.routines) > 1
             for i, r in enumerate(ctx.routines):
                 out.append(dict(base, name=r.name, description=r.description, index=i,
-                                path=f"{f}#{i}" if many else str(f), id=f"{source}/{f.name}#{i}",
+                                path=f"{f}#{i}" if many else str(f), id=f"{tag}/{f.name}#{i}",
                                 file_routines=len(ctx.routines)))
     return out
 
