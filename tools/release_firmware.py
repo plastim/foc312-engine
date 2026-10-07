@@ -3,8 +3,11 @@
     py -3.13 tools/release_firmware.py --product foc312 --version 8 --image ../foc312/.pio/build/focstim_v4/firmware.hex \\
         --notes "one model per direction" [--key PATH] [--out DIR] [--publish]
 
---product    foc312 (the FOC-Stim fork, .hex) or foc312-m5remote (the M5 remote, merged .bin)
---version    the release version; the GitHub tag is v<version>
+--product    foc312 (the FOC-Stim fork, .hex) or foc312-m5remote (the remote, merged .bin)
+--board      foc312-m5remote only: m5 (default: the M5 remote, as every release so far) or radr (the RADR hardware's
+             image: the manifest's product is foc312-m5remote-radr with "board": "radr", which apps from before the
+             RADR build refuse; the GitHub tag is radr-v<version>, in the same repository)
+--version    the release version; the GitHub tag is v<version> (radr-v<version> for --board radr)
 --key        the PRIVATE signing key (default: plastim-release.key.enc, else plastim-release.key, in the
              release-signing folder; the encrypted one asks for its passphrase)
 --out        where the three files go (default build/releases/<product>/<version>/)
@@ -35,25 +38,33 @@ PRODUCTS = {"foc312": ".hex", "foc312-m5remote": ".bin"}
 GITHUB_OWNER = "plastim"
 
 
-def build_manifest(product: str, version: str, image: Path, notes: str, min_host: str) -> bytes:
+BOARDS = {"m5": "", "radr": "-radr"}       # foc312-m5remote's boards: the manifest product's suffix
+
+
+def build_manifest(product: str, version: str, image: Path, notes: str, min_host: str, board: str = "") -> bytes:
     data = image.read_bytes()
     m = {"format": FORMAT, "product": product, "version": str(version), "file": image.name,
          "sha256": hashlib.sha256(data).hexdigest(), "size": len(data), "notes": notes,
          "min_host": min_host, "created": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())}
+    if board:
+        m["board"] = board
     return (json.dumps(m, indent=1, sort_keys=True) + "\n").encode("utf-8")
 
 
 def make_release(product: str, version: str, image: Path, notes: str, key: Path, out: Path,
-                 min_host: str = "") -> list[Path]:
+                 min_host: str = "", board: str = "m5") -> list[Path]:
     if product not in PRODUCTS:
         raise ValueError(f"product must be one of {sorted(PRODUCTS)}")
     if image.suffix.lower() != PRODUCTS[product]:
         raise ValueError(f"a {product} image is a {PRODUCTS[product]} file, not {image.name}")
+    if board != "m5" and (product != "foc312-m5remote" or board not in BOARDS):
+        raise ValueError(f"--board {board} is for foc312-m5remote only, one of {sorted(BOARDS)}")
     out.mkdir(parents=True, exist_ok=True)
     dest = out / image.name
     if dest.resolve() != image.resolve():
         shutil.copyfile(image, dest)
-    manifest = build_manifest(product, version, dest, notes, min_host)
+    manifest = build_manifest(product + BOARDS.get(board, ""), version, dest, notes, min_host,
+                              board if board != "m5" else "")
     sig = base64.b64encode(load_private(key).sign(manifest)) + b"\n"
     (out / "manifest.json").write_bytes(manifest)
     (out / "manifest.json.sig").write_bytes(sig)
@@ -63,6 +74,7 @@ def make_release(product: str, version: str, image: Path, notes: str, key: Path,
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--product", required=True, choices=sorted(PRODUCTS))
+    ap.add_argument("--board", default="m5", choices=sorted(BOARDS))
     ap.add_argument("--version", required=True)
     ap.add_argument("--image", required=True, type=Path)
     ap.add_argument("--notes", default="")
@@ -71,14 +83,18 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--out", type=Path)
     ap.add_argument("--publish", action="store_true")
     a = ap.parse_args(argv)
-    out = a.out or ROOT / "build" / "releases" / a.product / str(a.version)
-    files = make_release(a.product, str(a.version), a.image, a.notes, a.key or default_key(), out, a.min_host)
+    radr = a.board == "radr"
+    out = a.out or ROOT / "build" / "releases" / (a.product + BOARDS[a.board]) / str(a.version)
+    files = make_release(a.product, str(a.version), a.image, a.notes, a.key or default_key(), out, a.min_host,
+                         a.board)
     for f in files:
         print(f"{f}  ({f.stat().st_size} B)")
     print("sha256", hashlib.sha256(files[0].read_bytes()).hexdigest())
     if a.publish:
-        cmd = ["gh", "release", "create", f"v{a.version}", "--repo", f"{GITHUB_OWNER}/{a.product}",
-               "--title", f"{a.product} v{a.version}", "--notes", a.notes or f"{a.product} v{a.version}",
+        tag = f"radr-v{a.version}" if radr else f"v{a.version}"
+        title = f"{a.product} v{a.version} for the RADR hardware" if radr else f"{a.product} v{a.version}"
+        cmd = ["gh", "release", "create", tag, "--repo", f"{GITHUB_OWNER}/{a.product}",
+               "--title", title, "--notes", a.notes or title, *(["--latest=false"] if radr else []),
                *map(str, files)]
         print("running:", " ".join(cmd))
         return subprocess.run(cmd).returncode

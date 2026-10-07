@@ -190,8 +190,9 @@ the box over Wi-Fi, and the PC can be off. The remote's README has the full walk
 diagrams: **[setting up the M5 remote](https://github.com/plastim/foc312-m5remote#setting-it-up)**. In short:
 
 1. Plug the remote in with USB-C and switch it on. **Detect** shows it as **M5 remote**.
-2. On the **M5 remote** tab, in **M5 remote firmware**: **Check for updates**, **Download** the latest release,
-   choose it in **Image**, then **Flash…** and **Flash now**. The remote must be stopped (not playing). The log ends
+2. On the **M5 remote** tab, in **M5 remote firmware**: **Check for updates**, **Download** the latest release
+   (`v…`; the `radr-v…` releases are for the RADR hardware and show as **[RADR]**), choose it in **Image**, then
+   **Flash…** and **Flash now**. The remote must be stopped (not playing). The log ends
    with **Done.** and the remote restarts.
 3. In **Settings the M5 remote gets**: leave **The remote and the boxes talk over** on *the remote's own Wi-Fi
    network* (recommended: a direct link, much faster than a busy house access point), make up a network name and a

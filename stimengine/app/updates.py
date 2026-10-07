@@ -9,6 +9,12 @@ compromised GitHub account can publish files, but not a signature this app accep
 Nothing happens on its own: "check" asks GitHub what exists, "download" fetches and verifies one release into the
 local cache, and flashing is still the hub's explicit, confirmed step. The cache keeps working offline.
 
+The remote's firmware comes for two boards from the one repository: the M5 remote's releases (product
+`foc312-m5remote`) and the RADR hardware's (product `foc312-m5remote-radr`, "board": "radr", tags `radr-v<version>`).
+The product is inside the signed manifest, so an app from before the RADR build refuses a RADR release outright ("is
+for 'foc312-m5remote-radr'") and can never offer it for an M5; this one keeps each image's board, and the hub flashes
+an image only onto its board.
+
 Stock firmware (diglet48/FOC-Stim, the original author's releases) is not signed by PlaStim. A stock image is
 downloadable here only when its SHA-256 is one this app already knows (KNOWN_STOCK) and matches the digest GitHub
 reports; any other stock release is shown as a link to download by hand.
@@ -39,6 +45,8 @@ TRUSTED_KEYS = [
 ]
 
 PRODUCTS = {"box": "foc312", "remote": "foc312-m5remote"}
+# every product a kind's repository releases, with the board its image runs on ("" for the box)
+KIND_PRODUCTS = {"box": {"foc312": ""}, "remote": {"foc312-m5remote": "m5", "foc312-m5remote-radr": "radr"}}
 REPOS = {
     "box": os.environ.get("FOC312_RELEASES_BOX", "plastim/foc312"),
     "remote": os.environ.get("FOC312_RELEASES_REMOTE", "plastim/foc312-m5remote"),
@@ -169,6 +177,19 @@ def _asset(release: dict, name: str) -> dict | None:
 
 # what the hub calls a downloaded release (one name for the firmware everywhere: devices, cards, guide)
 RELEASE_NAMES = {"box": "PlaStim firmware", "remote": "PlaStim remote firmware"}
+BOARD_RELEASE_NAMES = {"radr": "PlaStim remote firmware for the RADR"}
+
+
+def manifest_board(kind: str, m: dict) -> str:
+    """The board a verified manifest's image runs on ("" for the box); UpdateError if the product is not one of this
+    kind's or its "board" word contradicts the product."""
+    products = KIND_PRODUCTS[kind]
+    if m["product"] not in products:
+        raise UpdateError(f"is for {m['product']!r}, not {PRODUCTS[kind]!r}")
+    board = products[m["product"]]
+    if kind == "remote" and str(m.get("board") or board) != board:
+        raise UpdateError(f"the manifest's board {m.get('board')!r} is not its product's ({board!r})")
+    return board
 
 
 def _version_key(v: str) -> tuple:
@@ -247,13 +268,15 @@ class Updater:
         mbytes = self.gh.asset(ma["url"])
         sig = self.gh.asset(sa["url"])
         m = verify_manifest(mbytes, sig, self.keys)
-        if m["product"] != product:
-            raise UpdateError(f"release {tag} is for {m['product']!r}, not {product!r}")
+        try:
+            manifest_board(kind, m)
+        except UpdateError as exc:
+            raise UpdateError(f"release {tag} {exc}") from None
         ia = _asset(rel, m["file"])
         if not ia:
             raise UpdateError(f"release {tag} has no {m['file']!r}")
         image = self.gh.asset(ia["url"])
-        folder = self.cache / product / str(m["version"])
+        folder = self.cache / m["product"] / str(m["version"])
         tmp = folder.with_name(folder.name + ".partial")
         shutil.rmtree(tmp, ignore_errors=True)
         tmp.mkdir(parents=True)
@@ -289,32 +312,39 @@ class Updater:
 
     # -- the cache as flashable images (re-verified every time it is listed)
     def _cached_version_dir(self, kind: str, tag: str) -> Path | None:
-        base = self.cache / PRODUCTS[kind]
-        if not base.is_dir():
-            return None
-        for d in base.iterdir():
-            try:
-                if json.loads((d / "release.json").read_text(encoding="utf-8")).get("tag") == tag:
-                    return d
-            except (OSError, ValueError):
+        for product in KIND_PRODUCTS[kind]:
+            base = self.cache / product
+            if not base.is_dir():
                 continue
+            for d in base.iterdir():
+                try:
+                    if json.loads((d / "release.json").read_text(encoding="utf-8")).get("tag") == tag:
+                        return d
+                except (OSError, ValueError):
+                    continue
         return None
 
     def _entry(self, kind: str, folder: Path) -> dict:
         e = {"source": "release", "signed": True, "path": None}
+        board = KIND_PRODUCTS[kind].get(folder.parent.name, "")       # (the cache folder's product, until verified)
+        prefix = f"release-{board}-" if board and board != "m5" else "release-"
         try:
             m = verify_manifest((folder / "manifest.json").read_bytes(), (folder / "manifest.json.sig").read_bytes(),
                                 self.keys)
-            if m["product"] != PRODUCTS[kind]:
+            if m["product"] != folder.parent.name:
                 raise UpdateError(f"cached release is for {m['product']!r}")
+            board = manifest_board(kind, m)
             verify_image(m, folder / m["file"])
             ver = str(m["version"])
-            e.update(id=f"release-{ver}", name=f"{RELEASE_NAMES[kind]} {ver if ver.startswith('v') else 'v' + ver}",
+            name = BOARD_RELEASE_NAMES.get(board, RELEASE_NAMES[kind])
+            e.update(id=f"{prefix}{ver}", name=f"{name} {ver if ver.startswith('v') else 'v' + ver}",
                      version=ver, sha256=str(m["sha256"]).lower(), file=m["file"],
                      notes=str(m.get("notes") or ""), recommended=False, path=str(folder / m["file"]))
         except (UpdateError, OSError, KeyError) as exc:
-            e.update(id=f"release-{folder.name}", name=f"{RELEASE_NAMES[kind]} {folder.name}", version=folder.name,
+            e.update(id=f"{prefix}{folder.name}", name=f"{RELEASE_NAMES[kind]} {folder.name}", version=folder.name,
                      sha256="", file="", notes="", recommended=False, signed=False, error=f"not verified: {exc}")
+        if kind == "remote":
+            e["board"] = board or "m5"
         return e
 
     def _stock_entry(self, folder: Path) -> dict:
@@ -329,14 +359,16 @@ class Updater:
 
     def cached(self, kind: str) -> list[dict]:
         out = []
-        base = self.cache / PRODUCTS[kind]
-        if base.is_dir():
-            for d in sorted(base.iterdir(), reverse=True):
-                if d.is_dir() and not d.name.endswith(".partial"):
-                    out.append(self._entry(kind, d))
-            good = [e for e in out if e.get("signed") and not e.get("error")]
-            if good:                                    # the newest verified release is the one to use
+        for product in KIND_PRODUCTS[kind]:
+            base = self.cache / product
+            if not base.is_dir():
+                continue
+            mine = [self._entry(kind, d) for d in sorted(base.iterdir(), reverse=True)
+                    if d.is_dir() and not d.name.endswith(".partial")]
+            good = [e for e in mine if e.get("signed") and not e.get("error")]
+            if good:                                    # per board: the newest verified release is the one to use
                 max(good, key=lambda e: _version_key(e["version"]))["recommended"] = True
+            out += mine
         if kind == "box" and (self.cache / "stock").is_dir():
             for d in sorted((self.cache / "stock").iterdir(), reverse=True):
                 if (d / STOCK_ASSET).is_file():

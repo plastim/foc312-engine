@@ -50,14 +50,14 @@ class FakeGitHub:
 
 
 def publish(gh: FakeGitHub, key_path: Path, tmp: Path, repo: str, product: str, version: str, image: bytes,
-            ext: str, notes: str = "", tamper_image: bytes | None = None, sign: bool = True) -> dict:
+            ext: str, notes: str = "", tamper_image: bytes | None = None, sign: bool = True, board: str = "m5") -> dict:
     """Make a signed release with the real tool and serve it from the fake GitHub; returns the release JSON."""
-    src = tmp / f"src-{product}-{version}"
+    src = tmp / f"src-{product}-{board}-{version}"
     src.mkdir(parents=True)
     img = src / f"image-{version}{ext}"
     img.write_bytes(image)
-    out = tmp / f"rel-{product}-{version}"
-    files = release_firmware.make_release(product, version, img, notes, key_path, out)
+    out = tmp / f"rel-{product}-{board}-{version}"
+    files = release_firmware.make_release(product, version, img, notes, key_path, out, board=board)
     assets = []
     for i, f in enumerate(files):
         body = f.read_bytes()
@@ -65,12 +65,13 @@ def publish(gh: FakeGitHub, key_path: Path, tmp: Path, repo: str, product: str, 
             body = tamper_image
         if not sign and f.name.endswith(".sig"):
             continue
-        url = f"{API}/repos/{repo}/releases/assets/{version}{i}"
+        url = f"{API}/repos/{repo}/releases/assets/{board}{version}{i}"
         gh.set(url, body)
         assets.append({"name": f.name, "url": url, "size": len(body),
                        "browser_download_url": f"https://github.com/{repo}/releases/download/v{version}/{f.name}",
                        "digest": "sha256:" + hashlib.sha256(body).hexdigest()})
-    return {"tag_name": f"v{version}", "name": f"{product} v{version}", "published_at": "2026-09-28T20:00:00Z",
+    tag = f"radr-v{version}" if board == "radr" else f"v{version}"
+    return {"tag_name": tag, "name": f"{product} v{version}", "published_at": "2026-09-28T20:00:00Z",
             "draft": False, "prerelease": False, "body": notes, "html_url": f"https://github.com/{repo}/releases/tag/v{version}",
             "assets": assets}
 
@@ -290,3 +291,52 @@ def test_the_release_key_can_be_passphrase_encrypted(tmp_path):
     assert K.default_key(tmp_path) == enc                  # signing prefers the encrypted key
     with _pytest.raises(FileExistsError):
         K.encrypt(tmp_path, b"correct horse battery staple")
+
+
+# ---- the remote's two boards: the RADR's releases carry their board, older apps refuse them -----------------------
+def test_radr_releases_carry_their_board_and_older_apps_refuse_them(world, monkeypatch):
+    from stimengine.app import devices
+
+    priv, gh, tmp = world["priv"], world["gh"], world["tmp"]
+    repo = updates.REPOS["remote"]
+    m5 = publish(gh, priv, tmp, repo, "foc312-m5remote", "1.03", b"\xe9" * 64, ".bin", "M5")
+    radr = publish(gh, priv, tmp, repo, "foc312-m5remote", "1.03", b"\xe9" * 80, ".bin", "RADR", board="radr")
+    gh.set(f"{API}/repos/{repo}/releases?per_page=20", [radr, m5])
+    u = world["u"]
+    u.gh._etag.clear()
+    assert [r["tag"] for r in u.check("remote")["releases"]] == ["radr-v1.03", "v1.03"]
+    m = json.loads((tmp / "rel-foc312-m5remote-radr-1.03" / "manifest.json").read_bytes())
+    assert (m["product"], m["board"]) == ("foc312-m5remote-radr", "radr")
+    # every app before the RADR build compares the product with PRODUCTS["remote"]: it refuses this release
+    assert m["product"] != updates.PRODUCTS["remote"]
+    assert "board" not in json.loads((tmp / "rel-foc312-m5remote-m5-1.03" / "manifest.json").read_bytes())
+    e_radr = u.download("remote", "radr-v1.03")
+    e_m5 = u.download("remote", "v1.03")
+    assert (e_radr["id"], e_radr["board"], e_m5["id"], e_m5["board"]) == ("release-radr-1.03", "radr", "release-1.03",
+                                                                          "m5")
+    assert "RADR" in e_radr["name"] and (tmp / "cache" / "foc312-m5remote-radr" / "1.03").is_dir()
+    lst = {i["id"]: i for i in firmware.listing()["remote"]}
+    assert lst["release-radr-1.03"]["recommended"] and lst["release-1.03"]["recommended"]    # one per board
+    assert u.check("remote")["releases"][0]["downloaded"]
+    # the hub flashes it only onto a RADR
+    monkeypatch.setattr(devices, "known_kind", lambda port: "remote")
+    monkeypatch.setattr(devices, "remote_board", lambda port: {"COM3": "radr", "COM18": "m5"}[port])
+    jobs = RecordingJobs()
+    st, d = post(Hub(engine=FakeEngine(), jobs=jobs), "/api/flash/remote",
+                 {"port": "COM18", "image": "release-radr-1.03", "confirm": True})
+    assert st == 400 and "this image is for the RADR remote" in d["error"]
+    st, d = post(Hub(engine=FakeEngine(), jobs=jobs), "/api/flash/remote",
+                 {"port": "COM3", "image": "release-radr-1.03", "confirm": True})
+    assert st == 200 and jobs.cmds[-1][1][2] == "stimengine.remote.flash"
+
+
+def test_a_radr_manifest_whose_board_contradicts_its_product_is_refused(world, tmp_path):
+    with pytest.raises(updates.UpdateError, match="board"):
+        updates.manifest_board("remote", {"product": "foc312-m5remote", "board": "radr"})
+    with pytest.raises(updates.UpdateError, match="not 'foc312-m5remote'"):
+        updates.manifest_board("remote", {"product": "foc312"})
+    assert updates.manifest_board("remote", {"product": "foc312-m5remote"}) == "m5"
+    with pytest.raises(ValueError, match="foc312-m5remote only"):
+        img = tmp_path / "x.hex"
+        img.write_bytes(b":00\n")
+        release_firmware.make_release("foc312", "9", img, "", world["priv"], tmp_path / "o", board="radr")
