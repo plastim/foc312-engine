@@ -485,6 +485,8 @@ $("remoteFlashBtn").addEventListener("click", () => {
     first ? h("div", {}, h("b", {}, "First flash: "), "only if this CP2102 is the RADR remote. Its own firmware is " +
       "replaced (back it up first: the remote firmware's README, \"The RADR hardware\"); then it asks for its remote " +
       "check (knobs, buttons, screen) before it drives a box.") : null,
+    !first && devBoard(dev) === "radr" ? h("div", {}, "Only the app is written: its remote check, patterns and " +
+      "settings stay.") : null,
     h("div", {}, "The remote must be stopped. It restarts when the flash is done.")].filter(Boolean));
   $("remoteConfirm").hidden = false;
 });

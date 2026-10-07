@@ -306,6 +306,11 @@ class Hub:
             names = devices.BOARD_NAMES
             return _err(f"{port} is the {names.get(board, board)}: this image is for the "
                         f"{names.get(img_board, img_board)}")
+        if board == "radr" and not first:
+            # an update of a RADR already on this firmware: the app partition only, so its remote check (NVS) and
+            # settings stay (stimengine/remote/flash.py checks the partition table on the remote first)
+            return self._start("flash-remote", [sys.executable, "-m", "stimengine.remote.flash", "--port", port,
+                                                "--mode", "app", str(path)], flash=True)
         return self._start("flash-remote", [sys.executable, "-m", "esptool", "--chip", "esp32s3", "--port", port,
                                             "--baud", "921600", "write-flash", "0x0", str(path)], flash=True)
 

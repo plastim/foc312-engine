@@ -424,7 +424,7 @@ def test_the_box_probe_never_runs_on_a_cp2102(monkeypatch):
     assert run(devices.probe("COM5")) == ("unknown", "", {})
 
 
-def test_radr_flashing_takes_only_radr_images_and_a_first_flash_only_when_asked(
+def test_radr_flashing_takes_only_radr_images_a_first_flash_only_when_asked_and_updates_write_the_app(
         manifests, monkeypatch):
     _box_dir, rem_dir = manifests
     (rem_dir / "radr.bin").write_bytes(bytes([0xE9]) * 80)
@@ -447,9 +447,9 @@ def test_radr_flashing_takes_only_radr_images_and_a_first_flash_only_when_asked(
 
     def flash(body):
         return post(Hub(engine=FakeEngine(), jobs=jobs), "/api/flash/remote", {"confirm": True, **body})
-    st, d = flash({"port": "COM3", "image": "q1"})
-    assert st == 200 and jobs.cmds[-1][1][1:] == ["-m", "esptool", "--chip", "esp32s3", "--port", "COM3", "--baud",
-                                                  "921600", "write-flash", "0x0", str(rem_dir / "radr.bin")]
+    st, d = flash({"port": "COM3", "image": "q1"})                     # an update: the app partition only
+    assert st == 200 and jobs.cmds[-1][1][1:] == ["-m", "stimengine.remote.flash", "--port", "COM3", "--mode", "app",
+                                                  str(rem_dir / "radr.bin")]
     st, d = flash({"port": "COM18", "image": "r1"})                    # the M5: the whole image at 0x0, as always
     assert st == 200 and jobs.cmds[-1][1][1:] == ["-m", "esptool", "--chip", "esp32s3", "--port", "COM18", "--baud",
                                                   "921600", "write-flash", "0x0", str(rem_dir / "r.bin")]
@@ -465,7 +465,7 @@ def test_radr_flashing_takes_only_radr_images_and_a_first_flash_only_when_asked(
     st, d = flash({"port": "COM7", "image": "q1", "first_flash": True})   # not a CP2102: never a first flash
     assert st == 400
     st, d = flash({"port": "COM3", "image": "q1", "first_flash": True})   # a RADR on our firmware: not a first flash
-    assert st == 200 and jobs.cmds[-1][1][5:7] == ["--port", "COM3"]
+    assert st == 200 and jobs.cmds[-1][1][3:7] == ["--port", "COM3", "--mode", "app"]
     del jobs.cmds[-1]
     assert len(jobs.cmds) == n
     st, d = flash({"port": "COM5", "image": "q1", "first_flash": True})   # the first flash: the whole image
