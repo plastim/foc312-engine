@@ -18,7 +18,7 @@ LIB = BUILD_DIR / "remote" / ("remote_ctrl.dll" if os.name == "nt" else "remote_
 RUN, PATTERNS, OPTIONS = 0, 1, 2
 K1, K2, K3, K4 = 0, 1, 2, 3                    # run screen: master, MA, level 1, level 2
 (OPT_WIRES1, OPT_POL1, OPT_WIRES2, OPT_POL2, OPT_PAD1, OPT_PAD2, OPT_PAD3, OPT_PAD4, OPT_SWAP, OPT_SHAPE,
- OPT_SKIP, OPT_BOX, OPT_BACK) = range(13)
+ OPT_SKIP, OPT_BOX, OPT_DEVICE, OPT_BACK) = range(14)
 
 
 @pytest.fixture(scope="module")
@@ -330,3 +330,25 @@ def test_shapes_follow_the_box_firmware(lib):
     r.run(0.2)
     assert r.d.rc_shape_sent(0) == 0                 # ... it is sent rounded
     assert "plays rounded" in r.d.rc_option(OPT_SHAPE).decode()
+
+
+def test_the_m5s_options_are_as_before_the_remote_check_hidden(lib):
+    """OPT_DEVICE (the RADR build's "Remote check") is hidden by default: on the M5 the highlight steps from Box to
+    Back as it always did, the option does nothing and the messages still name the M5's knobs."""
+    r = Remote(lib)
+    assert r.status() == "press knob 1 to pick a pattern"
+    r.push4()
+    assert r.d.rc_screen() == OPTIONS and r.d.rc_cursor() == 0
+    seen = [r.d.rc_cursor()]
+    for _ in range(20):
+        r.knob(K1, 1)
+        seen.append(r.d.rc_cursor())
+    assert sorted(set(seen)) == [o for o in range(OPT_BACK + 1) if o != OPT_DEVICE] and seen[-1] == OPT_BACK
+    r.knob(K1, -1)
+    assert r.d.rc_cursor() == OPT_BOX                    # back over the hidden one
+    r.knob(K1, -30)
+    assert r.d.rc_cursor() == 0                          # and it stops at the first, as before
+    assert not lib.rc_option_shown(OPT_DEVICE) and lib.rc_device_seq() == 0
+    r.link()
+    r.button()
+    assert r.status() == "pick a pattern first (knob 1)"

@@ -370,3 +370,91 @@ def test_the_trip_report_survives_the_reconnect_attempts():
         assert h.d.bl_trip_seq() == 2 and h.d.bl_ntrip() == 1   # a new report replaces the old one
         h.close()
     _run(go())
+
+
+# ---- request ids per kind of remote (foc312-m5remote core/boxlink.h BOXLINK_IDS_*) --------------------------------
+M5_IDS, RADR_IDS, PC_IDS = (8192, 12287), (12288, 16383), (1, 8191)
+
+
+def _request_ids(h: Harness) -> list[int]:
+    """Every request id the remote sent so far (the box's side of the transport, decoded)."""
+    dec, ids = hdlc.HDLCDecoder(), []
+    for chunk in h.sent:
+        for frame in dec.parse(chunk):
+            m = RpcMessage()
+            m.ParseFromString(frame)
+            if m.WhichOneof("message") == "request":
+                ids.append(m.request.id)
+    return ids
+
+
+class IdHarness(Harness):
+    """The harness, keeping what the remote wrote."""
+
+    def __init__(self, **kw):
+        self.sent: list[bytes] = []
+        super().__init__(**kw)
+
+    def _write(self, ptr, n) -> int:
+        if self.t.is_open:
+            self.sent.append(ctypes.string_at(ptr, n))
+        return super()._write(ptr, n)
+
+
+def test_the_m5_counts_its_own_request_ids_and_wraps_inside_them():
+    async def go():
+        h = IdHarness()
+        h.d.bl_set_ids.argtypes = [ctypes.c_uint32, ctypes.c_uint32]
+        assert h.d.bl_next_id() == M5_IDS[0]                 # boxlink_init's range is the M5's
+        h.d.bl_set_next_id.argtypes = [ctypes.c_uint32]
+        h.d.bl_set_next_id(M5_IDS[1] - 3)                    # close to its end: it wraps to its start
+        await h.connect()
+        await h.run(2.0, until=lambda: h.state() in (RUNNING, FAULT))
+        assert h.state() == RUNNING, h.fault()
+        await h.run(0.3, amps=(0.01, 0.0))
+        ids = _request_ids(h)
+        assert len(ids) > 10 and all(M5_IDS[0] <= i <= M5_IDS[1] for i in ids)
+        assert ids[:5] == [M5_IDS[1] - 3, M5_IDS[1] - 2, M5_IDS[1] - 1, M5_IDS[1], M5_IDS[0]]
+        h.close()
+    _run(go())
+
+
+def test_the_radr_build_counts_in_its_range_kept_across_a_reconnect():
+    async def go():
+        h = IdHarness()
+        h.d.bl_set_ids.argtypes = [ctypes.c_uint32, ctypes.c_uint32]
+        h.d.bl_set_ids(*RADR_IDS)
+        assert h.d.bl_next_id() == RADR_IDS[0]
+        h.d.bl_set_ids(0, 5)                                 # refused: not a remote's range (0 is no id)
+        h.d.bl_set_ids(RADR_IDS[0], 20000)                   # refused: past two-byte varints
+        assert h.d.bl_next_id() == RADR_IDS[0]
+        await h.connect()
+        await h.run(2.0, until=lambda: h.state() in (RUNNING, FAULT))
+        assert h.state() == RUNNING, h.fault()
+        h.d.bl_disconnected(b"test")
+        h.d.bl_connected(h.now())                            # boxlink_connected re-inits: the range stays
+        await h.run(2.0, until=lambda: h.state() in (RUNNING, FAULT))
+        assert h.state() == RUNNING, h.fault()
+        ids = _request_ids(h)
+        assert ids and all(RADR_IDS[0] <= i <= RADR_IDS[1] for i in ids)
+        assert len(set(ids)) == len(ids)                     # the count went on after the reconnect: no id twice
+        h.close()
+    _run(go())
+
+
+def test_an_error_reply_to_another_controller_is_not_ours():
+    """The box sends every reply to every client: the PC's (1..8191) or another remote's must never complete or fault
+    one of ours. Before the ranges the remote counted from 1, inside the PC's range."""
+    async def go():
+        h = IdHarness()
+        await h.connect()
+        await h.run(2.0, until=lambda: h.state() in (RUNNING, FAULT))
+        assert h.state() == RUNNING, h.fault()
+        for rid in (1, 5, 4095, PC_IDS[1], RADR_IDS[0], RADR_IDS[1]):
+            r = Response(id=rid)
+            r.error.code = 1
+            h.t.feed(hdlc.encode(RpcMessage(response=r).SerializeToString()))
+        await h.run(0.5, amps=(0.01, 0.0))
+        assert h.state() == RUNNING, h.fault()
+        h.close()
+    _run(go())

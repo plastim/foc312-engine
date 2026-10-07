@@ -145,3 +145,44 @@ def test_hello_gives_up_on_a_device_that_never_stops_talking():
     with pytest.raises(LoaderError, match="not a stim remote"):
         Remote(Chatty()).hello(wait_s=0.5)
     assert _t.monotonic() - t0 < 2.0
+
+
+# ---- what the remote runs on: HELLO's board and MAC words (the RADR build next to the M5) -------------------------
+@pytest.mark.parametrize("mode, board, mac", [(None, "m5", "02:00:00:00:00:05"), ("radr", "radr", "02:00:00:00:00:0a"),
+                                              ("noident", "", "")])
+def test_hello_says_the_board_and_the_mac(sim_exe, tmp_path, mode, board, mac):
+    link = PipeLink([str(sim_exe), str(tmp_path)] + ([mode] if mode else []))
+    try:
+        r = Remote(link, timeout=5.0)
+        assert r.hello() > 0                         # the free bytes as before: an older PC reads only that
+        assert (r.board, r.mac) == (board, mac)      # "": firmware from before the board words (only the M5 had such)
+        r.put("patterns.bin", PACK)                  # the same loader on both boards: patterns and settings
+        r.put("config.json", CONFIG)
+        r.reload()
+        assert (tmp_path / "patterns.bin").read_bytes() == PACK
+    finally:
+        link.close()
+
+
+def test_the_loader_runs_at_921600_with_dtr_and_rts_low(monkeypatch):
+    """The RADR's UART0 behind its CP2102 runs at 921600; DTR / RTS stay deasserted (EN and IO0 untouched). The M5's
+    USB serial ignores the baud."""
+    import serial
+
+    from stimengine.remote import loader as L
+
+    opened = {}
+
+    class FakeSerial:
+        def __init__(self):
+            self.port = None
+
+        def open(self):
+            opened.update(port=self.port, baud=self.baudrate, dtr=self.dtr, rts=self.rts)
+
+        def reset_input_buffer(self):
+            pass
+
+    monkeypatch.setattr(serial, "Serial", FakeSerial)
+    L.SerialLink("COM3")
+    assert opened == {"port": "COM3", "baud": 921600, "dtr": False, "rts": False} and L.SERIAL_BAUD == 921600

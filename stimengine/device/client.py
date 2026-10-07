@@ -165,6 +165,10 @@ class FocStimClient:
         self.transport = transport
         self.telemetry = Telemetry()
         self._decoder = hdlc.HDLCDecoder()
+        # Request ids: the box answers with the request's id, and its ESP32 passes USB and Wi-Fi to the one STM32
+        # UART, so every reply reaches every client on the box. This app counts 1..4095 (inside the PC's 1..8191);
+        # the remotes count in their own ranges above it (foc312-m5remote core/boxlink.h: the M5 8192..12287, the
+        # RADR build 12288..16383), so no client takes another's reply for its own.
         self._request_id = random.randint(1, 4096)
         self._pending: dict[int, asyncio.Future[Response]] = {}
         self._callbacks: dict[str, list[NotificationCallback]] = {k: [] for k in NOTIFICATION_FIELDS.values()}

@@ -1,9 +1,14 @@
-"""PC side of the M5 remote's USB loader (protocol: remote/core/loader.h).
+"""PC side of the remote's USB loader (protocol: foc312-m5remote core/loader.h).
 
     link = SerialLink("COM20")          # the remote on USB
     r = Remote(link); r.hello(); r.put("patterns.bin", data); r.reload()
 
 The remote refuses everything while its output is armed ("ERR busy"): loading never changes a running session.
+
+Two kinds of remote speak it: the M5 remote (the ESP32-S3's own USB serial: any baud) and the remote on the RADR
+hardware (its UART0 through a CP2102 USB-UART bridge at SERIAL_BAUD). Firmware since the RADR build says which in
+HELLO ("board=m5" / "board=radr") with its ESP32's MAC (Remote.board, Remote.mac): a CP2102's USB serial number is the
+same on every unit, so the PC knows a RADR by that MAC.
 """
 from __future__ import annotations
 
@@ -18,15 +23,22 @@ class LoaderError(RuntimeError):
     pass
 
 
-class SerialLink:
-    """The remote's USB serial port. DTR/RTS are held low so opening the port does not reset the ESP32."""
+# The loader's baud: the RADR's UART0 runs at this through its CP2102 (8x the old 115200). The M5's USB serial ignores
+# the baud, so one rate serves both.
+SERIAL_BAUD = 921600
 
-    def __init__(self, port: str, timeout: float = 5.0) -> None:
+
+class SerialLink:
+    """The remote's USB serial port. DTR/RTS are held low (deasserted) so opening the port does not reset the ESP32:
+    on the M5's USB serial they would, and on the RADR's CP2102 they drive EN and IO0 through the usual two-transistor
+    auto-reset (both deasserted: neither)."""
+
+    def __init__(self, port: str, timeout: float = 5.0, baud: int = SERIAL_BAUD) -> None:
         import serial
 
         self.ser = serial.Serial()
         self.ser.port = port
-        self.ser.baudrate = 115200
+        self.ser.baudrate = baud
         self.ser.timeout = timeout
         self.ser.dtr = False
         self.ser.rts = False
@@ -82,6 +94,7 @@ class Remote:
     def __init__(self, link, timeout: float = 5.0) -> None:
         self.link = link
         self.timeout = timeout
+        self.ident: dict[str, str] = {}            # HELLO's "board=..." and "mac=..." (firmware since the RADR build)
 
     def _cmd(self, line: str) -> str:
         self.link.write((line + "\n").encode("ascii"))
@@ -112,6 +125,8 @@ class Remote:
                     parts = ans.split()
                     if parts[:3] == ["OK", "stim-remote", "1"]:
                         self._drain()
+                        self.ident = {k: v for k, _eq, v in (w.partition("=") for w in parts[4:])
+                                      if k in ("board", "mac") and v}
                         return int(parts[3])
                     if ans:
                         last = ans
@@ -119,6 +134,16 @@ class Remote:
                 if "busy" in str(exc):
                     raise
         raise LoaderError(f"not a stim remote (last answer {last!r})")
+
+    @property
+    def board(self) -> str:
+        """What the remote runs on: "m5", "radr", or "" (firmware from before it said; only the M5 had such)."""
+        return self.ident.get("board", "")
+
+    @property
+    def mac(self) -> str:
+        """Its ESP32's MAC, lower case with colons ("" if it did not say)."""
+        return self.ident.get("mac", "").lower()
 
     def _drain(self) -> None:
         """Swallow the answers to any extra HELLOs sent while the remote was booting."""
