@@ -6,7 +6,7 @@
     POST /api/engine/connect        {"port"}      start the engine on that box
     POST /api/engine/disconnect                   stop it (releases the port)
     POST /api/flash/box             {"port", "image", "confirm": true, "remote_off": true}
-    POST /api/flash/remote          {"port", "image", "confirm": true}
+    POST /api/flash/remote          {"port", "image", "confirm": true, "first_flash": true (a RADR on its own firmware)}
     POST /api/remote/load           {"port"}      patterns + settings onto the remote
     POST /api/remote/pair           {"box_port", "house": bool}   a box's Wi-Fi: the remote's network or the house
     GET  /api/jobs, /api/jobs/{id}  job output
@@ -286,17 +286,26 @@ class Hub:
             return _err("missing 'port'")
         if d.get("confirm") is not True:
             return _err("flashing needs \"confirm\": true")
-        # esptool would happily flash a FOC-Stim's own ESP32: only a port detected as the M5 remote
-        refuse = self._not_remote(port)
+        # esptool would happily flash a FOC-Stim's own ESP32: only a port detected as a remote, and only an image for
+        # its board (the M5's on the M5, the RADR build on the RADR hardware). The one exception: the first flash of a
+        # RADR still on its own firmware (a CP2102 that does not answer as a remote), asked for explicitly
+        first = d.get("first_flash") is True and devices.radr_candidate(port)
+        refuse = None if first else self._not_remote(port)
         if refuse:
             return _err(refuse)
         busy = self._port_free(port)
         if busy:
             return _err(busy, 409)
         try:
-            _im, path = firmware.find("remote", str(d.get("image", "")))
+            im, path = firmware.find("remote", str(d.get("image", "")))
         except ValueError as exc:
             return _err(str(exc))
+        img_board = str(im.get("board") or "m5")
+        board = "radr" if first else (devices.remote_board(port) or "m5")
+        if img_board != board:
+            names = devices.BOARD_NAMES
+            return _err(f"{port} is the {names.get(board, board)}: this image is for the "
+                        f"{names.get(img_board, img_board)}")
         return self._start("flash-remote", [sys.executable, "-m", "esptool", "--chip", "esp32s3", "--port", port,
                                             "--baud", "921600", "write-flash", "0x0", str(path)], flash=True)
 
@@ -334,6 +343,9 @@ class Hub:
             return None
         if kind == "box":
             return f"{port} is a FOC-Stim box, not the M5 remote"
+        if devices.radr_candidate(port):
+            return (f"{port} is a CP2102 that does not answer as a remote: if it is a RADR on its own firmware, flash "
+                    "the RADR image with \"first flash\"; else press Detect")
         return f"{port} has not been detected as the M5 remote yet: press Detect"
 
     async def h_jobs(self, _req: web.Request) -> web.Response:

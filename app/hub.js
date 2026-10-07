@@ -38,8 +38,14 @@ const KIND_NAME = { box: "FOC-Stim", remote: "M5 remote", unknown: "unknown" };
 function devName(d) { return d.name || KIND_NAME[d.kind] || d.kind; }
 function devLabel(d) {
   const fw = d.fw_label ? " · " + d.fw_label : d.kind === "unknown" ? " (press Detect)" : "";
-  return `${d.port} — ${KIND_NAME[d.kind] || d.kind}${d.name && d.kind !== "remote" ? " " + d.name : ""}${fw}`;
+  if (d.kind === "remote") return `${d.port} — ${d.name || KIND_NAME.remote}${fw}`;
+  if (d.radr_candidate) return `${d.port} — CP2102, not a remote yet: a RADR on its own firmware?`;
+  return `${d.port} — ${KIND_NAME[d.kind] || d.kind}${d.name ? " " + d.name : ""}${fw}`;
 }
+// the board a remote image may go to on this device ("m5" / "radr"; a RADR not flashed yet: its first flash)
+const BOARD_NAME = { m5: "M5 remote", radr: "RADR remote" };
+function devBoard(d) { return d.kind === "remote" ? (d.board || "m5") : d.radr_candidate ? "radr" : ""; }
+function firstFlash(d) { return !!(d && d.kind !== "remote" && d.radr_candidate); }
 // the firmware as a tag: PlaStim v7+ is ready; older fork or stock needs a flash
 function fwTag(d) {
   if (d.kind === "remote") {
@@ -147,12 +153,12 @@ function renderDevices() {
         onclick: () => { $("boxPort").value = d.port; showTab("boxes"); $("boxFlashCard").scrollIntoView({ behavior: "smooth" }); } },
         "Firmware…"));
     } else {
-      acts.push(h("button", { onclick: () => { $("remotePort").value = d.port; history.replaceState(null, "", "#remote"); showTab("remote"); } }, "M5 remote…"));
+      acts.push(h("button", { onclick: () => { $("remotePort").value = d.port; history.replaceState(null, "", "#remote"); showTab("remote"); } }, (d.name || "M5 remote") + "…"));
     }
     const status = engineOn(d.port) ? h("span", { class: "tag use" }, "engine")
       : d.in_use ? h("span", { class: "tag warn", title: "another program has this port open" }, "in use") : h("span", { class: "muted" }, "free");
     rows.append(h("tr", {},
-      h("td", {}, h("span", { class: "badge " + d.kind }, KIND_NAME[d.kind] || d.kind),
+      h("td", {}, h("span", { class: "badge " + d.kind }, d.kind === "remote" && d.name ? d.name : KIND_NAME[d.kind] || d.kind),
         d.name && d.kind !== "remote" ? h("span", { class: "devname" }, d.name) : null),
       h("td", {}, [fwTag(d), d.serial ? h("div", { class: "mono muted" }, d.serial) : null]),
       h("td", { class: "mono" }, d.port),
@@ -164,9 +170,10 @@ function renderDevices() {
   const boxish = devices.filter((d) => d.kind === "box" || d.kind === "unknown");
   fillSelect($("boxPort"), boxish, devLabel, (d) => d.port, "no box on USB");
   fillSelect($("pairPort"), boxish, devLabel, (d) => d.port, "no box on USB");
-  // only a device detected as the M5 remote: loading or flashing the remote on a box's port is refused by the hub
-  fillSelect($("remotePort"), devices.filter((d) => d.kind === "remote"), devLabel, (d) => d.port,
-    devices.some((d) => d.kind === "unknown") ? "no M5 remote detected yet: press Detect" : "no M5 remote on USB");
+  // only a device detected as a remote (or a CP2102 that may be a RADR not flashed yet: its first flash only): loading
+  // or flashing the remote on a box's port is refused by the hub
+  fillSelect($("remotePort"), devices.filter((d) => d.kind === "remote" || d.radr_candidate), devLabel, (d) => d.port,
+    devices.some((d) => d.kind === "unknown") ? "no remote detected yet: press Detect" : "no remote on USB");
   updateBoxFlash();
   updateRemoteButtons();
 }
@@ -232,7 +239,7 @@ async function loadFirmware() {
   const order = (a, b) => (b.recommended ? 1 : 0) - (a.recommended ? 1 : 0);
   const src = (i) => i.source === "release" ? " [PlaStim release \u2713]" : i.source === "stock" ? " [stock, diglet48]"
     : i.source === "local" ? " [local build]" : "";
-  const lbl = (i) => `${imgTitle(i)}${i.recommended ? " (recommended)" : ""}${src(i)}${i.error ? " — " + i.error : ""}`;
+  const lbl = (i) => `${imgTitle(i)}${i.board === "radr" ? " [RADR]" : ""}${i.recommended ? " (recommended)" : ""}${src(i)}${i.error ? " — " + i.error : ""}`;
   fillSelect($("boxImage"), firmware.box.slice().sort(order), lbl, (i) => i.id, "no box images found");
   fillSelect($("remoteImage"), firmware.remote.slice().sort(order), lbl, (i) => i.id, "no remote images found");
   imageInfo("box"); imageInfo("remote");
@@ -436,6 +443,10 @@ function remoteWhyNot(needImage) {
     const img = image("remote");
     if (!img) return "no image selected";
     if (img.error) return img.error;
+    const b = devBoard(dev), ib = img.board || "m5";
+    if (b && ib !== b) return `this image is for the ${BOARD_NAME[ib] || ib}; ${port} is the ${BOARD_NAME[b] || b}`;
+  } else if (dev.kind !== "remote") {
+    return "flash the remote's firmware first";
   }
   return "";
 }
@@ -467,9 +478,13 @@ $("remoteFlashBtn").addEventListener("click", () => {
   if (remoteWhyNot(true)) return;
   const port = $("remotePort").value, img = image("remote");
   $("remoteConfirmText").innerHTML = "";
+  const dev = devices.find((d) => d.port === port), first = firstFlash(dev);
   $("remoteConfirmText").append("Flash ", h("b", {}, imgTitle(img)),
     " to the remote on ", h("b", {}, port), "?",
     ...[img.sha256 ? h("div", { class: "mono" }, "SHA-256 " + img.sha256) : null,
+    first ? h("div", {}, h("b", {}, "First flash: "), "only if this CP2102 is the RADR remote. Its own firmware is " +
+      "replaced (back it up first: the remote firmware's README, \"The RADR hardware\"); then it asks for its remote " +
+      "check (knobs, buttons, screen) before it drives a box.") : null,
     h("div", {}, "The remote must be stopped. It restarts when the flash is done.")].filter(Boolean));
   $("remoteConfirm").hidden = false;
 });
@@ -478,7 +493,9 @@ $("remoteFlashGo").addEventListener("click", () => {
   $("remoteConfirm").hidden = true;
   if (remoteWhyNot(true)) return;
   const port = $("remotePort").value, img = image("remote");
-  startJob("remote", "/api/flash/remote", { port, image: img.id, confirm: true }, `Flash ${imgTitle(img)} → ${port}`);
+  const first = firstFlash(devices.find((d) => d.port === port));
+  startJob("remote", "/api/flash/remote", { port, image: img.id, confirm: true, first_flash: first },
+    `Flash ${imgTitle(img)} → ${port}`);
 });
 
 // ---------------------------------------------------------------- hotkeys

@@ -7,7 +7,9 @@ Every image is checked again whenever the list is read (SHA-256; releases also t
 is still listed, with "error", and cannot be flashed.
 
 Manifest format: {"images": [{"id", "name", "version", "file" (relative to the manifest), "sha256", "notes",
-"recommended"}]}.
+"recommended", "board"}]}. A remote image's "board" is what it runs on: "m5" (the M5 remote; an image without one is
+the M5's, as every image before the RADR build) or "radr" (the RADR hardware). The hub flashes an image only onto its
+board.
 """
 from __future__ import annotations
 
@@ -53,7 +55,7 @@ def load(manifest: Path) -> list[dict]:
         e = {"id": str(im.get("id", "")), "name": str(im.get("name", "")), "version": str(im.get("version", "")),
              "sha256": str(im.get("sha256", "")).lower(), "file": str(im.get("file", "")),
              "notes": str(im.get("notes", "")), "recommended": bool(im.get("recommended", False)),
-             "source": "local", "signed": False}
+             "source": "local", "signed": False, "board": str(im.get("board") or "m5")}
         path = manifest.parent / e["file"]
         if not e["file"] or not path.is_file():
             e["error"] = "file missing"
@@ -67,9 +69,15 @@ def _public(e: dict) -> dict:
     return {k: v for k, v in e.items() if k != "path"}
 
 
+def _remote_board(e: dict) -> dict:
+    """A remote image without a board word: the M5's (the only board before the RADR build)."""
+    e.setdefault("board", "m5")
+    return e
+
+
 def listing() -> dict:
     return {"box": load(BOX_MANIFEST) + [_public(e) for e in updater().cached("box")],
-            "remote": load(REMOTE_MANIFEST) + [_public(e) for e in updater().cached("remote")]}
+            "remote": load(REMOTE_MANIFEST) + [_remote_board(_public(e)) for e in updater().cached("remote")]}
 
 
 def find(kind: str, image_id: str) -> tuple[dict, Path]:
@@ -84,5 +92,5 @@ def find(kind: str, image_id: str) -> tuple[dict, Path]:
         if e["id"] == image_id:
             if "error" in e:
                 raise ValueError(f"image {image_id!r}: {e['error']}")
-            return e, Path(e["path"])
+            return (_remote_board(e) if kind == "remote" else e), Path(e["path"])
     raise ValueError(f"no {kind} image {image_id!r}")

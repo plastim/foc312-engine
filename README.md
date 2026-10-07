@@ -133,7 +133,9 @@ This is the home of the PlaStim foc312 family. You only install this app; it put
   **foc312** firmware ([plastim/foc312](https://github.com/plastim/foc312)) for you.
 - A USB data cable (a charge-only cable shows nothing).
 - Optional: the **M5 remote**, the [OSSM M5 Remote](https://github.com/ortlof/OSSM-M5-Remote) hardware with the
-  [foc312-m5remote](https://github.com/plastim/foc312-m5remote) firmware.
+  [foc312-m5remote](https://github.com/plastim/foc312-m5remote) firmware. The same firmware also runs on the RADR
+  (R+D's wireless remote) for patterns; the hub detects it on its CP2102 and flashes it too
+  ([its first flash](https://github.com/plastim/foc312-m5remote#the-radr-hardware): back up its own firmware first).
 - Python 3.13 (a one-click installer is planned).
 
 ## Install and run
@@ -235,6 +237,8 @@ Sibling projects, each its own repository, cloned next to this one:
 - [diglet48](https://github.com/diglet48): the FOC-Stim hardware and firmware, and
   [restim](https://github.com/diglet48/restim) (MIT), included in `vendor/restim/` as a reference.
 - [ortlof](https://github.com/ortlof/OSSM-M5-Remote): the OSSM M5 Remote hardware (CC BY-SA 4.0).
+- [R+D](https://github.com/researchanddesire): the RADR wireless remote hardware (CERN-OHL-S-2.0), which the remote
+  firmware also runs on (our own firmware, written from scratch; not made or supported by R+D).
 - The buttshock community, for what is publicly known about the ET-312.
 
 ## License

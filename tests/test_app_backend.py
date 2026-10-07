@@ -92,6 +92,7 @@ def isolated_devices(monkeypatch, tmp_path):
     monkeypatch.setattr(devices, "KNOWN_FILE", tmp_path / "devices.json")
     monkeypatch.setattr(devices, "_box_names", lambda: {"02:ab:cd:00:00:02": "box 2"})
     devices._cache.clear()
+    devices._ident.clear()
 
 
 def test_devices_are_listed_without_opening_ports(monkeypatch):
@@ -109,7 +110,7 @@ def test_devices_are_listed_without_opening_ports(monkeypatch):
     assert [d["port"] for d in devs] == ["COM17", "COM18"]            # a port without a VID is not a USB device
     assert devs[0] == {"port": "COM17", "serial": "02:AB:CD:00:00:02", "vid": "303a", "pid": "1001",
                        "in_use": True, "kind": "box", "detail": "engine connected", "name": "box 2",
-                       "fw_fork": None, "fw_label": ""}
+                       "fw_fork": None, "fw_label": "", "board": "", "mac": "", "radr_candidate": False}
     assert devs[1]["kind"] == "unknown" and not devs[1]["in_use"]
 
 
@@ -355,3 +356,121 @@ def test_a_detected_kind_is_remembered_and_firmware_is_labelled(monkeypatch):
     devs = run(devices.scan(set(), 0))
     assert devs[0]["kind"] == "box" and devs[0]["fw_fork"] == 8
     assert devices.firmware_of("box", "1.3.2 (main)") == (0, "stock 1.3.2")
+
+
+# ---- the remote on the RADR hardware: a CP2102, known by its MAC, flashed only with its own images -----------------
+RADR_MAC = "02:00:00:00:00:0a"
+
+
+def radr_ports(monkeypatch, entries):
+    """(port, serial, vid, pid): the RADR's CP2102 is 10c4:ea60 with the same serial on every unit."""
+    ports = [SimpleNamespace(device=d, serial_number=s, vid=v, pid=p) for d, s, v, p in entries]
+    monkeypatch.setattr(devices.list_ports, "comports", lambda: ports)
+    devices._cache.clear()
+    devices._ident.clear()
+
+
+def test_a_radr_is_detected_by_hello_and_remembered_by_its_mac(monkeypatch):
+    radr_ports(monkeypatch, [("COM3", "0001", 0x10C4, 0xEA60), ("COM18", "02:AB", 0x303A, 0x1001),
+                             ("COM5", "0001", 0x10C4, 0xEA60)])
+    asked = []
+
+    async def fake_probe(port):
+        asked.append(port)
+        if port == "COM3":
+            return "remote", "stim-remote free 13000000 B", {"board": "radr", "mac": RADR_MAC}
+        if port == "COM18":
+            return "remote", "stim-remote free 1 B", {"board": "m5", "mac": "02:00:00:00:00:18"}
+        return "unknown", "", {}
+    monkeypatch.setattr(devices, "probe", fake_probe)
+    devs = {d["port"]: d for d in run(devices.scan(set(), 1))}
+    assert (devs["COM3"]["kind"], devs["COM3"]["board"], devs["COM3"]["name"], devs["COM3"]["mac"]) == (
+        "remote", "radr", "RADR remote", RADR_MAC)
+    assert (devs["COM18"]["board"], devs["COM18"]["name"]) == ("m5", "M5 remote")
+    assert devs["COM5"]["kind"] == "unknown" and devs["COM5"]["radr_candidate"]        # a CP2102 that said nothing
+    assert not devs["COM3"]["radr_candidate"] and not devs["COM18"]["radr_candidate"]
+    known = json.loads(devices.KNOWN_FILE.read_text())
+    assert "0001" not in known                                  # never by the CP2102's serial: the same on every unit
+    assert known[f"mac:{RADR_MAC}"]["port"] == "COM3" and known[f"mac:{RADR_MAC}"]["board"] == "radr"
+    assert devices.known_kind("COM3") == "remote" and devices.remote_board("COM3") == "radr"
+    assert devices.remote_board("COM18") == "m5" and devices.radr_candidate("COM5") and not devices.radr_candidate("COM3")
+    # the next start: known on its port without opening it
+    devices._cache.clear()
+    devices._ident.clear()
+    monkeypatch.setattr(devices, "probe", lambda port: (_ for _ in ()).throw(AssertionError("probed")))
+    devs = {d["port"]: d for d in run(devices.scan(set(), 0))}
+    assert (devs["COM3"]["kind"], devs["COM3"]["board"], devs["COM3"]["mac"]) == ("remote", "radr", RADR_MAC)
+    assert devices.known_kind("COM3") == "remote" and devices.remote_board("COM3") == "radr"
+    assert devs["COM5"]["kind"] == "unknown"
+
+
+def test_a_remote_from_before_the_board_words_is_the_m5(monkeypatch):
+    radr_ports(monkeypatch, [("COM18", "02:AB", 0x303A, 0x1001)])
+
+    async def fake_probe(port):
+        return "remote", "stim-remote free 1 B"                 # (an older probe: kind and detail only)
+    monkeypatch.setattr(devices, "probe", fake_probe)
+    d = run(devices.scan(set(), 1))[0]
+    assert (d["board"], d["name"]) == ("m5", "M5 remote") and devices.remote_board("COM18") == "m5"
+
+
+def test_the_box_probe_never_runs_on_a_cp2102(monkeypatch):
+    radr_ports(monkeypatch, [("COM5", "0001", 0x10C4, 0xEA60)])
+    monkeypatch.setattr(devices, "probe_remote", lambda port: None)
+
+    async def no_box(port):
+        raise AssertionError("the box probe opened a CP2102")
+    monkeypatch.setattr(devices, "probe_box", no_box)
+    assert run(devices.probe("COM5")) == ("unknown", "", {})
+
+
+def test_radr_flashing_takes_only_radr_images_and_a_first_flash_only_when_asked(
+        manifests, monkeypatch):
+    _box_dir, rem_dir = manifests
+    (rem_dir / "radr.bin").write_bytes(bytes([0xE9]) * 80)
+    rsha = hashlib.sha256((rem_dir / "r.bin").read_bytes()).hexdigest()
+    qsha = hashlib.sha256((rem_dir / "radr.bin").read_bytes()).hexdigest()
+    (rem_dir / "manifest.json").write_text(json.dumps({"images": [
+        {"id": "r1", "name": "Remote", "file": "r.bin", "sha256": rsha},                    # (no board: the M5's)
+        {"id": "q1", "name": "Remote RADR", "file": "radr.bin", "sha256": qsha, "board": "radr"}]}))
+    assert [i["board"] for i in firmware.listing()["remote"]] == ["m5", "radr"]
+    radr_ports(monkeypatch, [("COM3", "0001", 0x10C4, 0xEA60), ("COM18", "02:AB", 0x303A, 0x1001),
+                             ("COM5", "0001", 0x10C4, 0xEA60), ("COM7", "02:CD", 0x303A, 0x1001)])
+
+    async def fake_probe(port):
+        return {"COM3": ("remote", "stim-remote free 1 B", {"board": "radr", "mac": RADR_MAC}),
+                "COM18": ("remote", "stim-remote free 1 B", {"board": "m5", "mac": "02:00:00:00:00:18"})}.get(
+                    port, ("unknown", "", {}))
+    monkeypatch.setattr(devices, "probe", fake_probe)
+    run(devices.scan(set(), 1))
+    jobs = RecordingJobs()
+
+    def flash(body):
+        return post(Hub(engine=FakeEngine(), jobs=jobs), "/api/flash/remote", {"confirm": True, **body})
+    st, d = flash({"port": "COM3", "image": "q1"})
+    assert st == 200 and jobs.cmds[-1][1][1:] == ["-m", "esptool", "--chip", "esp32s3", "--port", "COM3", "--baud",
+                                                  "921600", "write-flash", "0x0", str(rem_dir / "radr.bin")]
+    st, d = flash({"port": "COM18", "image": "r1"})                    # the M5: the whole image at 0x0, as always
+    assert st == 200 and jobs.cmds[-1][1][1:] == ["-m", "esptool", "--chip", "esp32s3", "--port", "COM18", "--baud",
+                                                  "921600", "write-flash", "0x0", str(rem_dir / "r.bin")]
+    n = len(jobs.cmds)
+    st, d = flash({"port": "COM3", "image": "r1"})                     # the M5's image onto the RADR
+    assert st == 400 and "RADR remote" in d["error"] and "for the M5 remote" in d["error"]
+    st, d = flash({"port": "COM18", "image": "q1"})                    # the RADR's onto the M5
+    assert st == 400 and "is the M5 remote" in d["error"]
+    st, d = flash({"port": "COM5", "image": "q1"})                     # a CP2102 that said nothing: not without asking
+    assert st == 400 and "first flash" in d["error"]
+    st, d = flash({"port": "COM5", "image": "r1", "first_flash": True})   # a first flash: the RADR's image only
+    assert st == 400 and "for the M5 remote" in d["error"]
+    st, d = flash({"port": "COM7", "image": "q1", "first_flash": True})   # not a CP2102: never a first flash
+    assert st == 400
+    st, d = flash({"port": "COM3", "image": "q1", "first_flash": True})   # a RADR on our firmware: not a first flash
+    assert st == 200 and jobs.cmds[-1][1][5:7] == ["--port", "COM3"]
+    del jobs.cmds[-1]
+    assert len(jobs.cmds) == n
+    st, d = flash({"port": "COM5", "image": "q1", "first_flash": True})   # the first flash: the whole image
+    assert st == 200 and jobs.cmds[-1][1][1:] == ["-m", "esptool", "--chip", "esp32s3", "--port", "COM5", "--baud",
+                                                  "921600", "write-flash", "0x0", str(rem_dir / "radr.bin")]
+    # loading is for a detected remote only (a RADR not flashed yet has no loader)
+    assert post(Hub(engine=FakeEngine(), jobs=jobs), "/api/remote/load", {"port": "COM5"})[0] == 400
+    assert post(Hub(engine=FakeEngine(), jobs=jobs), "/api/remote/load", {"port": "COM3"})[0] == 200
