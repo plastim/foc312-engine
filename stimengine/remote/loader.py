@@ -6,7 +6,7 @@
 The remote refuses everything while its output is armed ("ERR busy"): loading never changes a running session.
 
 Two kinds of remote speak it: the M5 remote (the ESP32-S3's own USB serial: any baud) and the remote on the RADR
-hardware (its UART0 through a CP2102 USB-UART bridge at SERIAL_BAUD). Firmware since the RADR build says which in
+hardware (its UART0 through a CP2102 USB-UART bridge at SERIAL_BAUD, no flow control). Firmware since the RADR build says which in
 HELLO ("board=m5" / "board=radr") with its ESP32's MAC (Remote.board, Remote.mac): a CP2102's USB serial number is the
 same on every unit, so the PC knows a RADR by that MAC.
 """
@@ -23,9 +23,16 @@ class LoaderError(RuntimeError):
     pass
 
 
-# The loader's baud: the RADR's UART0 runs at this through its CP2102 (8x the old 115200). The M5's USB serial ignores
-# the baud, so one rate serves both.
-SERIAL_BAUD = 921600
+# The loader's baud: the RADR's UART0 runs at this through its CP2102 (4x the old 115200: a pattern pack in well under
+# a second). 921600 lost bytes on the RADR (no flow control, the UART's interrupt waiting out flash writes). The M5's
+# USB serial ignores the baud, so one rate serves both.
+SERIAL_BAUD = 460800
+# A file whose transfer failed (a byte lost on the wire: no ACK; a damaged one: ERR crc) is sent again this often. The
+# remote only replaces a file once all of it arrived with the right CRC, so a failed transfer leaves the old one.
+PUT_RETRIES = 2
+LOADER_TIMEOUT_S = 5.0          # the remote ends a transfer this long after its last byte (core/loader.h)
+# what a transfer can fail with that sending it again cannot fix
+_FINAL = ("busy", "name", "size", "space", "open")
 
 
 class SerialLink:
@@ -153,7 +160,38 @@ class Remote:
         except LoaderError:
             pass
 
-    def put(self, name: str, data: bytes, progress=None) -> None:
+    def put(self, name: str, data: bytes, progress=None, retries: int = PUT_RETRIES) -> None:
+        """Send a file. A transfer that fails on the way (a timeout, a CRC error, a wrong ACK) is sent again up to
+        `retries` times, after the remote's half-finished transfer is ended (_unstick)."""
+        for attempt in range(retries + 1):
+            try:
+                self._put_once(name, data, progress)
+                if attempt:
+                    print(f"{name}: sent again, attempt {attempt + 1}: ok")
+                return
+            except LoaderError as exc:
+                if attempt == retries or any(w in str(exc) for w in _FINAL):
+                    raise
+                print(f"{name}: {exc}; sending it again")
+                self._unstick(str(exc))
+
+    def _unstick(self, why: str = "") -> None:
+        """After a failed transfer: wait until the remote has ended it, then swallow what is still on its way. A
+        CRC error (or a refused write) ended it there and then; after a lost byte the remote waits for the rest and
+        gives up LOADER_TIMEOUT_S after the last byte ("ERR timeout"). Either way it drops the half-sent file and keeps
+        the old one."""
+        if not any(w in why for w in ("remote: crc", "remote: commit", "remote: write", "remote: timeout")):
+            end = time.monotonic() + LOADER_TIMEOUT_S + 2.0
+            while time.monotonic() < end:
+                try:
+                    line = self.link.readline(max(0.1, end - time.monotonic()))
+                except LoaderError:
+                    break
+                if line.startswith("ERR timeout"):
+                    break
+        self._drain()
+
+    def _put_once(self, name: str, data: bytes, progress=None) -> None:
         crc = zlib.crc32(data) & 0xFFFFFFFF
         ans = self._cmd(f"PUT {name} {len(data)} {crc:08x}")
         if not ans.startswith("READY "):

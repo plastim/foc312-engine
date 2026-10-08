@@ -164,8 +164,8 @@ def test_hello_says_the_board_and_the_mac(sim_exe, tmp_path, mode, board, mac):
         link.close()
 
 
-def test_the_loader_runs_at_921600_with_dtr_and_rts_low(monkeypatch):
-    """The RADR's UART0 behind its CP2102 runs at 921600; DTR / RTS stay deasserted (EN and IO0 untouched). The M5's
+def test_the_loader_runs_at_460800_with_dtr_and_rts_low(monkeypatch):
+    """The RADR's UART0 behind its CP2102 runs at 460800; DTR / RTS stay deasserted (EN and IO0 untouched). The M5's
     USB serial ignores the baud."""
     import serial
 
@@ -185,4 +185,42 @@ def test_the_loader_runs_at_921600_with_dtr_and_rts_low(monkeypatch):
 
     monkeypatch.setattr(serial, "Serial", FakeSerial)
     L.SerialLink("COM3")
-    assert opened == {"port": "COM3", "baud": 921600, "dtr": False, "rts": False} and L.SERIAL_BAUD == 921600
+    assert opened == {"port": "COM3", "baud": 460800, "dtr": False, "rts": False} and L.SERIAL_BAUD == 460800
+
+
+# ---- a UART without flow control (the RADR's CP2102): a lost or damaged byte, and the PC sending the file again ----
+@pytest.fixture
+def quick(sim_exe, tmp_path):
+    link = PipeLink([str(sim_exe), str(tmp_path), "radr"])
+    yield Remote(link, timeout=1.0), tmp_path           # (a lost byte shows as a missing ACK: 1 s, not 5)
+    link.close()
+
+
+@pytest.mark.parametrize("fault, at", [("DROP", 5000), ("FLIP", 3000), ("DROP", 3071), ("FLIP", 0)])
+def test_a_lost_or_damaged_byte_is_sent_again(quick, fault, at):
+    r, folder = quick
+    assert r.hello() > 0 and r.board == "radr"
+    blob = bytes((i * 7919 + 13) & 0xFF for i in range(6000))
+    (folder / fault).write_text(str(at))
+    r.put("patterns.bin", blob)                          # the first try fails (no ACK / ERR crc), the second goes through
+    assert not (folder / fault).exists() and (folder / "patterns.bin").read_bytes() == blob
+    assert not list(folder.glob(".*.part"))
+    assert r.list() == {"patterns.bin": len(blob)}       # and the remote answers normally afterwards
+
+
+def test_a_failed_transfer_keeps_the_old_file(quick):
+    r, folder = quick
+    r.hello()
+    r.put("patterns.bin", PACK)
+    (folder / "DROP").write_text("100")
+    with pytest.raises(LoaderError, match="timeout"):
+        r.put("patterns.bin", b"\x01" * 3000, retries=0)
+    r._unstick("no answer from the remote (timeout)")
+    assert (folder / "patterns.bin").read_bytes() == PACK and not list(folder.glob(".*.part"))
+    r.put("config.json", CONFIG)
+    r.reload()                                           # the old patterns, still a working remote
+    for final in ("ERR busy",):                          # a refusal is not sent again
+        (folder / "BUSY").write_bytes(b"")
+        with pytest.raises(LoaderError, match="busy"):
+            r.put("patterns.bin", PACK)
+        (folder / "BUSY").unlink()
