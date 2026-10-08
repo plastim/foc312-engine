@@ -26,7 +26,7 @@ class LoaderError(RuntimeError):
 # The loader's baud: the RADR's UART0 runs at this through its CP2102 (4x the old 115200: a pattern pack in well under
 # a second). 921600 lost bytes on the RADR (no flow control, the UART's interrupt waiting out flash writes). The M5's
 # USB serial ignores the baud, so one rate serves both.
-SERIAL_BAUD = 460800
+SERIAL_BAUD = 115200
 # A file whose transfer failed (a byte lost on the wire: no ACK; a damaged one: ERR crc) is sent again this often. The
 # remote only replaces a file once all of it arrived with the right CRC, so a failed transfer leaves the old one.
 PUT_RETRIES = 2
