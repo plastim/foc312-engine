@@ -164,8 +164,8 @@ def test_hello_says_the_board_and_the_mac(sim_exe, tmp_path, mode, board, mac):
         link.close()
 
 
-def test_the_loader_runs_at_460800_with_dtr_and_rts_low(monkeypatch):
-    """The RADR's UART0 behind its CP2102 runs at 460800; DTR / RTS stay deasserted (EN and IO0 untouched). The M5's
+def test_the_loader_runs_at_115200_with_dtr_and_rts_low(monkeypatch):
+    """The RADR's UART0 behind its CP2102 runs at 115200 (115200 lost bytes on the hardware); DTR / RTS stay deasserted (EN and IO0 untouched). The M5's
     USB serial ignores the baud."""
     import serial
 
@@ -185,7 +185,7 @@ def test_the_loader_runs_at_460800_with_dtr_and_rts_low(monkeypatch):
 
     monkeypatch.setattr(serial, "Serial", FakeSerial)
     L.SerialLink("COM3")
-    assert opened == {"port": "COM3", "baud": 460800, "dtr": False, "rts": False} and L.SERIAL_BAUD == 460800
+    assert opened == {"port": "COM3", "baud": 115200, "dtr": False, "rts": False} and L.SERIAL_BAUD == 115200
 
 
 # ---- a UART without flow control (the RADR's CP2102): a lost or damaged byte, and the PC sending the file again ----
