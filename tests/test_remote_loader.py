@@ -165,7 +165,7 @@ def test_hello_says_the_board_and_the_mac(sim_exe, tmp_path, mode, board, mac):
 
 
 def test_the_loader_runs_at_115200_with_dtr_and_rts_low(monkeypatch):
-    """The RADR's UART0 behind its CP2102 runs at 115200 (115200 lost bytes on the hardware); DTR / RTS stay deasserted (EN and IO0 untouched). The M5's
+    """The RADR's UART0 behind its CP2102 runs at 115200 (460800 lost bytes on the hardware); DTR / RTS stay deasserted (EN and IO0 untouched). The M5's
     USB serial ignores the baud."""
     import serial
 
