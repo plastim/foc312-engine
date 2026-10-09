@@ -436,7 +436,7 @@ $("boxFlashGo").addEventListener("click", async () => {
 function remoteWhyNot(needImage) {
   const port = $("remotePort").value, dev = devices.find((d) => d.port === port);
   if (jobRunning()) return "a job is running";
-  if (!dev) return "no remote on USB";
+  if (!dev) return "no remote on USB (a RADR not showing up needs the Silicon Labs CP210x driver: Device Manager, Code 28)";
   if (dev.in_use) return "another program has this port open";
   if (dev.kind === "box") return "that is a box, not the remote";
   if (needImage) {

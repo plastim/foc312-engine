@@ -189,7 +189,10 @@ The PC app is only needed to **set the remote up**. After that the remote plays 
 the box over Wi-Fi, and the PC can be off. The remote's README has the full walk-through with screenshots and
 diagrams: **[setting up the M5 remote](https://github.com/plastim/foc312-m5remote#setting-it-up)**. In short:
 
-1. Plug the remote in with USB-C and switch it on. **Detect** shows it as **M5 remote**.
+1. Plug the remote in with USB-C and switch it on. **Detect** shows it as **M5 remote**. (A **RADR** needs the
+   Silicon Labs **CP210x** driver: if it never shows up and Device Manager lists *CP2102 USB to UART Bridge
+   Controller* with *Code 28*, install the driver as the remote's README says under
+   [first flash](https://github.com/plastim/foc312-m5remote#first-flash-back-up-the-radrs-own-firmware-first).)
 2. On the **M5 remote** tab, in **M5 remote firmware**: **Check for updates**, **Download** the latest release
    (`v…`; the `radr-v…` releases are for the RADR hardware and show as **[RADR]**), choose it in **Image**, then
    **Flash…** and **Flash now**. The remote must be stopped (not playing). The log ends
